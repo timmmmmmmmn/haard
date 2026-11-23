@@ -31,7 +31,7 @@ $PIP -e ./openwakeword --no-deps
 $PIP onnxruntime tqdm scipy scikit-learn pyyaml numpy==1.26.4 \
   mutagen==1.47.0 torchinfo==1.8.0 torchmetrics==1.2.0 speechbrain==0.5.14 \
   audiomentations==0.33.0 torch-audiomentations==0.11.0 acoustics==0.2.6 \
-  pronouncing==0.2.0 datasets==2.14.6 deep-phonemizer==0.0.19 soundfile
+  pronouncing==0.2.0 datasets==2.14.6 pyarrow==14.0.2 deep-phonemizer==0.0.19 soundfile
 
 MODELS=openwakeword/openwakeword/resources/models; mkdir -p $MODELS
 for f in embedding_model.onnx melspectrogram.onnx embedding_model.tflite melspectrogram.tflite; do
