@@ -36,68 +36,95 @@ html[data-theme="licht"] {
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--tekst);
-  font-family: Roboto, "Segoe UI", system-ui, sans-serif; -webkit-user-select: none; user-select: none; }
+  font-family: Outfit, Roboto, "Segoe UI", system-ui, sans-serif; -webkit-user-select: none; user-select: none; }
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
 [hidden] { display: none !important; }
 
 /* ---------- Rustscherm ---------- */
-#rust { position: fixed; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; }
-#fotos { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(120% 90% at 85% 110%, #4a1d0c 0%, #241009 40%, var(--bg) 75%); }
-html[data-theme="licht"] #fotos { background: radial-gradient(120% 90% at 85% 110%, #ffd2a8 0%, #fbe6d2 45%, var(--bg) 80%); }
+@font-face { font-family: "Outfit"; src: url("fonts/Outfit.ttf") format("truetype"); font-weight: 100 900; }
+
+#rust { position: fixed; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; font-family: Outfit, Roboto, sans-serif; }
+#fotos { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg); }
 .foto { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-size: cover; background-position: center;
   opacity: 0; transition: opacity 1.6s ease; }
 .foto.zicht { opacity: 1; }
+
+/* Gloed van een haardvuur: twee zachte vlekken die heel langzaam bewegen (alleen overdag) */
+#gloed { position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; pointer-events: none; }
+#gloed i { position: absolute; border-radius: 50%; will-change: transform; }
+#gloed .g1 { width: 900px; height: 900px; right: -320px; bottom: -520px;
+  background: radial-gradient(closest-side, rgba(255, 106, 40, .42), rgba(255, 106, 40, .12) 55%, rgba(255, 106, 40, 0));
+  animation: zweef1 38s ease-in-out infinite alternate; }
+#gloed .g2 { width: 620px; height: 620px; right: 120px; bottom: -420px;
+  background: radial-gradient(closest-side, rgba(255, 190, 90, .30), rgba(255, 190, 90, 0));
+  animation: zweef2 27s ease-in-out infinite alternate; }
+@keyframes zweef1 { from { transform: translate(0, 0) scale(1); } to { transform: translate(-90px, -40px) scale(1.12); } }
+@keyframes zweef2 { from { transform: translate(0, 0) scale(1); } to { transform: translate(110px, -60px) scale(.9); } }
+html[data-theme="licht"] #gloed .g1 { background: radial-gradient(closest-side, rgba(255, 140, 60, .35), rgba(255, 140, 60, 0)); }
+html.met-fotos #gloed { display: none; }
+
 #waas { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; opacity: 0; transition: opacity 1s;
-  background: linear-gradient(to top, rgba(0,0,0,.72) 0%, rgba(0,0,0,.25) 45%, rgba(0,0,0,0) 65%),
-              linear-gradient(to bottom, rgba(0,0,0,.45) 0%, rgba(0,0,0,0) 22%); }
+  background: linear-gradient(to right, rgba(0,0,0,.65) 0%, rgba(0,0,0,.25) 50%, rgba(0,0,0,.1) 100%),
+              linear-gradient(to top, rgba(0,0,0,.5) 0%, rgba(0,0,0,0) 40%); }
 html.met-fotos #waas { opacity: 1; }
-html.met-fotos #rust { --tekst: #fff; --zacht: rgba(255,255,255,.78); color: #fff; }
+html.met-fotos #rust { --tekst: #fff; --zacht: rgba(255,255,255,.8); color: #fff; }
 
-#boven { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; padding: 18px 22px; }
-.spacer { flex: 1; }
-.icoon-knop { width: 44px; height: 44px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: var(--zacht); }
+#boven { position: absolute; top: 14px; right: 16px; display: flex; align-items: center; }
+#boven .icoon-knop { margin-left: 4px; opacity: .55; }
+.icoon-knop { width: 48px; height: 48px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: var(--zacht); }
 .icoon-knop svg { width: 24px; height: 24px; }
-.icoon-knop:active { background: rgba(127,127,127,.18); }
-.punt { width: 8px; height: 8px; border-radius: 50%; background: var(--gevaar); margin-right: 12px; opacity: .9; transition: background .3s; }
-.punt.aan { background: #4cd07d; opacity: 0; }
+.icoon-knop:active { background: rgba(127,127,127,.18); opacity: 1; }
+/* Alleen zichtbaar als er iets mis is met de verbinding */
+.punt { width: 10px; height: 10px; border-radius: 50%; background: var(--gevaar); margin-right: 10px; }
+.punt.aan { display: none; }
 
-.weer-knop { display: flex; align-items: center; padding: 6px 12px 6px 6px; border-radius: 999px; }
-.weer-knop:active { background: rgba(127,127,127,.18); }
-.weer-icoon svg { width: 40px; height: 40px; display: block; }
-.weer-temp { font-size: 26px; font-weight: 300; margin-left: 8px; }
+/* De klok: groot, dun, de dubbele punt gloeit zacht in de vuurkleur */
+#klok { position: absolute; left: 64px; top: 50%; transform: translateY(-58%); }
+.tijd { font-size: 210px; line-height: .9; font-weight: 200; letter-spacing: -8px; font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum"; color: var(--tekst); white-space: nowrap; }
+.tijd .dp { display: inline-block; margin: 0 2px; color: var(--accent); animation: adem 4s ease-in-out infinite; transform: translateY(-10px); }
+@keyframes adem { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+.datum { font-size: 30px; font-weight: 300; margin: 18px 0 0 10px; color: var(--zacht); letter-spacing: .2px; }
+.datum b { font-weight: 500; color: var(--tekst); }
 
-#klok { position: absolute; left: 40px; bottom: 34px; }
-.tijd { font-size: 150px; line-height: .95; font-weight: 200; letter-spacing: -4px; font-variant-numeric: tabular-nums; }
-.datum { font-size: 26px; font-weight: 400; margin-top: 8px; color: var(--tekst); opacity: .92; }
-.weer-zin { font-size: 18px; color: var(--zacht); margin-top: 6px; }
+/* Weer rechtsboven, rustig en groot */
+#weerKnop { position: absolute; right: 56px; top: 50%; transform: translateY(-80%); display: flex; flex-direction: column; align-items: flex-end;
+  text-align: right; color: var(--tekst); font-family: Outfit, Roboto, sans-serif; padding: 12px; border-radius: 22px; }
+#weerKnop:active { background: rgba(127,127,127,.14); }
+.weer-icoon svg { width: 84px; height: 84px; display: block; }
+.weer-temp { font-size: 64px; font-weight: 200; line-height: 1; margin-top: 4px; }
+.weer-zin { font-size: 19px; font-weight: 300; color: var(--zacht); margin-top: 8px; max-width: 280px; }
 
 /* Muziekkaart: alleen zichtbaar als er iets speelt of gepauzeerd is */
-#muziek { position: absolute; right: 28px; bottom: 34px; width: 330px; display: flex; flex-wrap: wrap; align-items: center;
-  background: var(--vlak); border: 1px solid var(--lijn); border-radius: 22px; padding: 14px; box-shadow: var(--schaduw); color: var(--tekst); }
-html.met-fotos #muziek { background: rgba(20, 14, 11, .82); border-color: rgba(255,255,255,.08); }
-.hoes { width: 74px; height: 74px; border-radius: 12px; background: var(--vlak2) center/cover no-repeat; flex: none; display: flex;
+#muziek { position: absolute; right: 28px; bottom: 28px; width: 340px; display: flex; flex-wrap: wrap; align-items: center;
+  background: rgba(30, 22, 18, .78); border: 1px solid rgba(255,255,255,.06); border-radius: 24px; padding: 14px; box-shadow: var(--schaduw); color: #fff; }
+html[data-theme="licht"] #muziek { background: var(--vlak); border-color: var(--lijn); color: var(--tekst); }
+.hoes { width: 72px; height: 72px; border-radius: 14px; background: rgba(255,255,255,.06) center/cover no-repeat; flex: none; display: flex;
   align-items: center; justify-content: center; color: var(--zacht); }
 .hoes svg { width: 30px; height: 30px; }
 .hoes.met-plaatje svg { display: none; }
 .muziek-tekst { flex: 1; min-width: 0; margin-left: 14px; }
-.muziek-titel { font-size: 18px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.muziek-artiest { font-size: 15px; color: var(--zacht); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.muziek-titel { font-size: 19px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.muziek-artiest { font-size: 15px; opacity: .7; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .muziek-knoppen { width: 100%; display: flex; justify-content: center; align-items: center; margin-top: 10px; }
-.muziek-knoppen .icoon-knop { color: var(--tekst); margin: 0 10px; }
-.muziek-knoppen .icoon-knop.groot { width: 54px; height: 54px; background: var(--accent); color: var(--op-accent); }
+.muziek-knoppen .icoon-knop { color: inherit; margin: 0 12px; }
+.muziek-knoppen .icoon-knop.groot { width: 56px; height: 56px; background: var(--accent); color: var(--op-accent); }
 .muziek-knoppen .icoon-knop.groot svg { width: 22px; height: 22px; }
+/* Met muziek schuift het weer omhoog */
+html.met-muziek #weerKnop { top: 28px; transform: none; }
+html.met-muziek #boven { top: auto; bottom: 200px; }
 
-#micKnop { position: absolute; right: 28px; top: 50%; margin-top: -32px; width: 64px; height: 64px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center; color: var(--zacht); opacity: .55; }
-#micKnop svg { width: 30px; height: 30px; }
-#micKnop:active { opacity: 1; background: rgba(127,127,127,.18); }
-
-/* Nachtstand: alleen een kleine, gedimde klok */
-html.nacht #fotos, html.nacht #waas, html.nacht #boven, html.nacht #muziek, html.nacht #micKnop, html.nacht .weer-zin { display: none; }
+/* Nachtstand: alleen een kleine, donkerrode klok — niets beweegt, niets licht op */
+html.nacht #fotos, html.nacht #gloed, html.nacht #waas, html.nacht #boven, html.nacht #muziek, html.nacht #weerKnop { display: none !important; }
 html.nacht body, html.nacht #rust { background: #000; }
-html.nacht #klok { left: 0; right: 0; bottom: auto; top: 50%; margin-top: -70px; text-align: center; color: #8a4a2c; }
-html.nacht .tijd { font-size: 110px; }
-html.nacht .datum { font-size: 20px; color: #6b3a22; }
+html.nacht #klok { left: 0; right: 0; text-align: center; }
+html.nacht .tijd { font-size: 150px; letter-spacing: -5px; color: #6e2a12; }
+html.nacht .tijd .dp { animation: none; color: #6e2a12; }
+html.nacht .datum { font-size: 22px; color: #4a1d0d; margin-left: 0; }
+html.nacht .datum b { color: #4a1d0d; font-weight: 300; }
+html.nacht #assist { background: #000; color: #6e2a12; }
+html.nacht #assist .assist-label, html.nacht #assist .assist-jij, html.nacht #assist .assist-antwoord { color: #6e2a12; }
+html.nacht .vlam i { background: #6e2a12 !important; animation: none !important; }
 
 /* ---------- Assistent ---------- */
 #assist { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 20; display: flex; align-items: center; justify-content: center;

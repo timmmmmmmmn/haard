@@ -91,6 +91,7 @@ object Updater {
 
     /** De app gaat naar de achtergrond: klaarstaande update nu installeren. */
     fun installIfReady(context: Context) {
+        if (Stilte.nu) return // 's nachts nooit herstarten (scherm en geluid blijven rustig); morgen weer
         val file = ready ?: return
         ready = null
         Thread { runCatching { install(context, file) } }.start()

@@ -141,7 +141,13 @@ class Assistent(private val ctx: Context) {
                 val tekst = data.optJSONObject("stt_output")?.optString("text")?.trim().orEmpty()
                 HomeAssistant.Socket.vergeet(runId)
                 runId = -1
-                if (tekst.isEmpty()) niksVerstaan() else verwerk(tekst)
+                // Veiligheid: alleen iets doen als Home Assistant echt spraak hoorde, en nooit op
+                // de bekende "spook"-zinnen die Whisper verzint bij stilte of ruis.
+                when {
+                    tekst.isEmpty() -> niksVerstaan()
+                    !spraakGehoord || Opdrachten.isSpook(tekst) -> stilWeg()
+                    else -> verwerk(tekst)
+                }
             }
             "error" -> {
                 if (data.optString("code") == "stt-no-text-recognized") niksVerstaan()
@@ -150,7 +156,15 @@ class Assistent(private val ctx: Context) {
         }
     }
 
+    /** Er was niets echts te horen: zonder geluid en zonder iets te doen weer verdwijnen. */
+    private fun stilWeg() {
+        klaar(null)
+        status("weg")
+    }
+
     private fun niksVerstaan() {
+        if (Stilte.nu) return stilWeg() // 's nachts geen "niet verstaan" op het scherm
+
         Geluid.fout()
         klaar("Ik heb je niet verstaan.")
     }
@@ -241,7 +255,8 @@ class Assistent(private val ctx: Context) {
     private fun naSpreken(jij: String) {
         stopSpeler()
         // Stelde de assistent een wedervraag? Dan meteen weer luisteren, zonder wekwoord.
-        if (doorpraten) begin() else klaar(antwoord.toString(), jij)
+        // Wedervraag: meteen weer luisteren, maar 's nachts nooit vanzelf
+        if (doorpraten && !Stilte.nu) begin() else klaar(antwoord.toString(), jij)
     }
 
     private fun mislukt(melding: String?) {
@@ -296,6 +311,22 @@ class Assistent(private val ctx: Context) {
 object Opdrachten {
 
     /** Geeft (actie, wat Haard laat zien) terug, of null als HA het moet doen. Bij "volume" is het tweede het getal. */
+    // Zinnen die Whisper verzint bij stilte of ruis (geleerd van ondertitelde video's)
+    private val SPOOK = listOf(
+        "ondertiteld", "ondertiteling", "ondertitels", "bedankt voor het kijken", "bedankt voor het luisteren",
+        "dank je wel voor het kijken", "tot de volgende keer", "tot de volgende video", "abonneer", "amara",
+        "tv gelderland", "omroep", "applaus", "♪", "[", "*", "lacht", "thank you", "subtitles",
+    )
+
+    /** True als de "zin" vrijwel zeker niet van iemand komt: dan doet Haard niets. */
+    fun isSpook(zin: String): Boolean {
+        val t = zin.lowercase().trim()
+        if (SPOOK.any { t.contains(it) }) return true
+        val woorden = t.replace(Regex("[^\\p{L}0-9 ]"), " ").trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
+        // Eén los woord is alleen goed als het een bekend commando is ("pauze", "volgende", "stop")
+        return woorden.isEmpty() || (woorden.size == 1 && herken(t) == null)
+    }
+
     fun herken(zin: String): Pair<String, String>? {
         val t = zin.lowercase().replace(Regex("[^a-z0-9éëèïö ]"), " ").replace(Regex("\\s+"), " ").trim()
             .removePrefix("hey ").removePrefix("oké ").removePrefix("ok ").trim()

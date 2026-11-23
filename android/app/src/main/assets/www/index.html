@@ -10,23 +10,25 @@
 
 <main id="rust">
   <div id="fotos"><div class="foto" id="fotoA"></div><div class="foto" id="fotoB"></div></div>
+  <div id="gloed"><i class="g1"></i><i class="g2"></i></div>
   <div id="waas"></div>
 
   <header id="boven">
-    <button class="weer-knop" id="weerKnop" hidden>
-      <span class="weer-icoon" id="weerIcoon"></span>
-      <span class="weer-temp" id="weerTemp"></span>
-    </button>
-    <div class="spacer"></div>
-    <span class="punt" id="haPunt" title="Home Assistant"></span>
+    <span class="punt" id="haPunt" title="Geen verbinding met Home Assistant"></span>
+    <button class="icoon-knop" id="micKnop" aria-label="Vraag iets"></button>
     <button class="icoon-knop" id="instKnop" aria-label="Instellingen"></button>
   </header>
 
   <section id="klok">
-    <div class="tijd" id="tijd">--:--</div>
+    <div class="tijd"><span id="uur">--</span><span class="dp">:</span><span id="min">--</span></div>
     <div class="datum" id="datum"></div>
-    <div class="weer-zin" id="weerZin"></div>
   </section>
+
+  <button id="weerKnop" hidden>
+    <span class="weer-icoon" id="weerIcoon"></span>
+    <span class="weer-temp" id="weerTemp"></span>
+    <span class="weer-zin" id="weerZin"></span>
+  </button>
 
   <section id="muziek" hidden>
     <div class="hoes" id="hoes"></div>
@@ -40,8 +42,6 @@
       <button class="icoon-knop" data-media="volgende" aria-label="Volgende"></button>
     </div>
   </section>
-
-  <button id="micKnop" aria-label="Vraag iets"></button>
 </main>
 
 <!-- Assistent: verschijnt na het wekwoord -->

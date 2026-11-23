@@ -140,8 +140,8 @@ class MainActivity : ComponentActivity() {
     fun updateReady(@Suppress("UNUSED_PARAMETER") versie: String) {
         web.postDelayed(object : Runnable {
             override fun run() {
-                if (HaardService.assistent?.fase == Assistent.Fase.RUST) Updater.installIfReady(this@MainActivity)
-                else web.postDelayed(this, 30_000)
+                if (HaardService.assistent?.fase == Assistent.Fase.RUST && !Stilte.nu) Updater.installIfReady(this@MainActivity)
+                else web.postDelayed(this, if (Stilte.nu) 10 * 60_000L else 30_000L)
             }
         }, 5_000)
     }

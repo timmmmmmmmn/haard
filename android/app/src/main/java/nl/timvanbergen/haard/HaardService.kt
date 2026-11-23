@@ -123,6 +123,7 @@ class HaardService : Service() {
         val pcm = ShortArray(Wekwoord.BLOK)
         val bytes = ByteBuffer.allocate(Wekwoord.BLOK * 2).order(ByteOrder.LITTLE_ENDIAN)
         var rustTot = 0L
+        var reeks = 0
         var piek = 0f
         var piekTijd = 0L
         rec.startRecording()
@@ -153,8 +154,14 @@ class HaardService : Service() {
                     piekTijd = nu
                     if (meten) Bus.stuur("meter", JSONObject().put("kans", kans.toDouble()))
                 }
-                if (kans >= Instellingen.drempel && nu > rustTot &&
+                // Het wekwoord moet een paar blokken achter elkaar duidelijk gehoord worden ('s nachts strenger),
+                // zodat een los geluidje nooit genoeg is
+                val stil = Stilte.nu
+                val drempel = if (stil) maxOf(Instellingen.drempel, 0.75f) else Instellingen.drempel
+                reeks = if (kans >= drempel) reeks + 1 else 0
+                if (reeks >= (if (stil) 3 else 2) && nu > rustTot &&
                     (a.fase == Assistent.Fase.RUST || a.fase == Assistent.Fase.SPREKEN)) {
+                    reeks = 0
                     rustTot = nu + 2000
                     ww.leeg()
                     a.start()

@@ -88,8 +88,9 @@
   var wasNacht = null;
   function tik() {
     var d = new Date();
-    $('tijd').textContent = d.getHours() + ':' + twee(d.getMinutes());
-    $('datum').textContent = DAGEN[d.getDay()] + ' ' + d.getDate() + ' ' + MAANDEN[d.getMonth()];
+    $('uur').textContent = d.getHours();
+    $('min').textContent = twee(d.getMinutes());
+    $('datum').innerHTML = '<b>' + DAGEN[d.getDay()] + '</b> ' + d.getDate() + ' ' + MAANDEN[d.getMonth()];
     var nacht = isNacht(d);
     if (nacht !== wasNacht) {
       wasNacht = nacht;
@@ -159,8 +160,8 @@
     var zin = WEER_TEKST[st.state] || '';
     var v = verwachting[0];
     if (v) {
-      zin += (zin ? ' · ' : '') + graden(v.templow) + ' tot ' + graden(v.temperature);
-      if (v.precipitation_probability) zin += ' · ' + Math.round(v.precipitation_probability) + '% kans op regen';
+      zin += (zin ? ' · ' : '') + graden(v.templow) + ' / ' + graden(v.temperature);
+      if (v.precipitation_probability >= 20) zin += ' · ' + Math.round(v.precipitation_probability) + '% regen';
     }
     $('weerZin').textContent = zin;
     $('weerTitel').textContent = st.attributes.friendly_name || 'Weer';
@@ -213,6 +214,7 @@
   berichten.media = function (d) {
     media = d;
     $('muziek').hidden = !d.actief;
+    html.classList.toggle('met-muziek', !!d.actief);
     $('mediaSub').textContent = d.toegang ? 'Toegang gegeven' : 'Nodig om te zien wat er speelt';
     $('mediaKnop').textContent = d.toegang ? 'Instellingen' : 'Toegang geven';
     if (!d.actief) return;
@@ -233,6 +235,7 @@
 
   berichten.assist = function (d) {
     clearTimeout(verbergTimer);
+    if (d.fase === 'weg') { verbergAssist(); return; } // niets echts gehoord: stil verdwijnen
     var a = $('assist');
     a.hidden = false;
     $('vlam').className = 'vlam ' + d.fase;
