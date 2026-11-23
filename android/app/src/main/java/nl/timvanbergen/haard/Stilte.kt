@@ -41,6 +41,12 @@ object Stilte {
         val stil = nu
         if (!stil && gedempt == false) return
         val audio = ctx.getSystemService(AudioManager::class.java)
+        val nm = ctx.getSystemService(android.app.NotificationManager::class.java)
+        // Extra slot: Android's eigen "Niet storen" op totale stilte (ook wekkers en meldingen van andere apps)
+        if (nm.isNotificationPolicyAccessGranted) runCatching {
+            nm.setInterruptionFilter(if (stil) android.app.NotificationManager.INTERRUPTION_FILTER_NONE
+                else android.app.NotificationManager.INTERRUPTION_FILTER_ALL)
+        }
         if (stil) {
             if (gedempt != true) Media.actie("pauze")
             // Ook elke minuut opnieuw: als iets het volume tussendoor omhoog zet, gaat het weer op stil
