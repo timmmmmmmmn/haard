@@ -113,7 +113,16 @@
     $('haPunt').classList.toggle('aan', !!d.verbonden);
     if (!$('instVel').hidden) vulInstellingen();
     if (d.verbonden && !weerGeladen) laadWeer();
+    if (d.verbonden && !inst.pipeline) kiesHaard();
   };
+
+  // Nog geen assistent gekozen: dan die met de naam "Haard" (zo heet hij in Home Assistant)
+  function kiesHaard() {
+    ws({ type: 'assist_pipeline/pipeline/list' }).then(function (m) {
+      var p = ((m.result || {}).pipelines || []).filter(function (p) { return /^haard$/i.test(p.name); })[0];
+      if (p && !inst.pipeline) zet('pipeline', p.id);
+    }).catch(function () {});
+  }
 
   // ---------- Weer ----------
   var weerGeladen = false, weerEntity = null, verwachting = [];
