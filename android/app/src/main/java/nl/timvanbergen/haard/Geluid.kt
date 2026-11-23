@@ -36,6 +36,7 @@ object Geluid {
     }
 
     private fun speel(pcm: ShortArray) {
+        if (Stilte.nu) return
         Thread {
             runCatching {
                 val track = AudioTrack.Builder()

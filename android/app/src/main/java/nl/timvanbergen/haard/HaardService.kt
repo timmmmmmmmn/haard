@@ -43,6 +43,7 @@ class HaardService : Service() {
         }
         HomeAssistant.Socket.start()
         start()
+        stilteKlok.run()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -53,7 +54,16 @@ class HaardService : Service() {
         return START_STICKY
     }
 
+    private val klok = android.os.Handler(android.os.Looper.getMainLooper())
+    private val stilteKlok = object : Runnable {
+        override fun run() {
+            Stilte.controleer(this@HaardService)
+            klok.postDelayed(this, 60_000)
+        }
+    }
+
     override fun onDestroy() {
+        klok.removeCallbacks(stilteKlok)
         stopLus()
         wake?.release()
         assistent = null

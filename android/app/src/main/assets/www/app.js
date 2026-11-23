@@ -286,6 +286,10 @@
     $('drempel').style.left = (DREMPEL[inst.gevoeligheid] || 0.5) * 100 + '%';
     segment('thema', inst.thema, function (v) { zet('thema', v); thema(); });
     segment('fotoInterval', inst.foto_interval, function (v) { zet('foto_interval', v); volgendeFoto(); });
+    $('stilAan').checked = inst.stil;
+    $('stilVan').value = inst.stil_van;
+    $('stilTot').value = inst.stil_tot;
+    $('stilTotWeekend').value = inst.stil_tot_weekend;
     $('nachtAan').checked = inst.nacht;
     $('nachtVan').value = inst.nacht_van;
     $('nachtTot').value = inst.nacht_tot;
@@ -341,6 +345,10 @@
   $('wwAan').addEventListener('change', function () { zet('wekwoord', this.checked); });
   $('pipeline').addEventListener('change', function () { zet('pipeline', this.value); });
   $('weerEntity').addEventListener('change', function () { zet('weer', this.value); laadWeer(); });
+  $('stilAan').addEventListener('change', function () { zet('stil', this.checked); });
+  $('stilVan').addEventListener('change', function () { zet('stil_van', this.value); });
+  $('stilTot').addEventListener('change', function () { zet('stil_tot', this.value); });
+  $('stilTotWeekend').addEventListener('change', function () { zet('stil_tot_weekend', this.value); });
   $('nachtAan').addEventListener('change', function () { zet('nacht', this.checked); wasNacht = null; tik(); });
   $('nachtVan').addEventListener('change', function () { zet('nacht_van', this.value); wasNacht = null; tik(); });
   $('nachtTot').addEventListener('change', function () { zet('nacht_tot', this.value); wasNacht = null; tik(); });
@@ -365,7 +373,7 @@
   // ---------- Voorbeeld in een gewone browser (zonder de app) ----------
   function demo() {
     var s = { ha_url: 'https://ha.timvanbergen.nl', pipeline: '', wekwoord: true, gevoeligheid: 'normaal', thema: 'donker',
-      foto_interval: 30, nacht: false, nacht_van: '23:00', nacht_tot: '07:00', weer: '', ingelogd: true, token: false, media_toegang: true };
+      foto_interval: 30, stil: true, stil_van: '23:00', stil_tot: '08:00', stil_tot_weekend: '10:00', nacht: false, nacht_van: '23:00', nacht_tot: '07:00', weer: '', ingelogd: true, token: false, media_toegang: true };
     var nu = Date.now();
     var fc = [0, 1, 2, 3, 4, 5].map(function (i) {
       return { datetime: new Date(nu + i * 864e5).toISOString(), condition: ['partlycloudy', 'rainy', 'sunny', 'cloudy', 'pouring', 'clear-night'][i],

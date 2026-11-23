@@ -217,6 +217,7 @@ class MainActivity : ComponentActivity() {
             when (sleutel) {
                 "wekwoord" -> HaardService.herlaad(this@MainActivity)
                 "ha_url" -> if (Instellingen.haUrl != oud) HomeAssistant.Socket.opnieuw()
+                "stil", "stil_van", "stil_tot", "stil_tot_weekend" -> Stilte.controleer(this@MainActivity)
             }
         }
 

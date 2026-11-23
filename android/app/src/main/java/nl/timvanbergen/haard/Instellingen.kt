@@ -21,6 +21,10 @@ object Instellingen {
         "nacht_van" to "23:00",
         "nacht_tot" to "07:00",
         "weer" to "",
+        "stil" to true,
+        "stil_van" to "23:00",
+        "stil_tot" to "08:00",
+        "stil_tot_weekend" to "10:00",
     )
 
     fun init(ctx: Context) {

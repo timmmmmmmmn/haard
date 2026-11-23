@@ -215,6 +215,11 @@ class Assistent(private val ctx: Context) {
     }
 
     private fun spreek(url: String, jij: String) {
+        // Stille tijd: niets voorlezen, het antwoord blijft alleen op het scherm staan
+        if (Stilte.nu) {
+            naSpreken(jij)
+            return
+        }
         fase = Fase.SPREKEN
         status("spreken", jij = jij, antwoord = antwoord.toString())
         val mijn = beurt
