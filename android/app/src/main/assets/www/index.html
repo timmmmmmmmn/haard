@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="nl" data-theme="donker">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Haard</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<main id="rust">
+  <div id="fotos"><div class="foto" id="fotoA"></div><div class="foto" id="fotoB"></div></div>
+  <div id="waas"></div>
+
+  <header id="boven">
+    <button class="weer-knop" id="weerKnop" hidden>
+      <span class="weer-icoon" id="weerIcoon"></span>
+      <span class="weer-temp" id="weerTemp"></span>
+    </button>
+    <div class="spacer"></div>
+    <span class="punt" id="haPunt" title="Home Assistant"></span>
+    <button class="icoon-knop" id="instKnop" aria-label="Instellingen"></button>
+  </header>
+
+  <section id="klok">
+    <div class="tijd" id="tijd">--:--</div>
+    <div class="datum" id="datum"></div>
+    <div class="weer-zin" id="weerZin"></div>
+  </section>
+
+  <section id="muziek" hidden>
+    <div class="hoes" id="hoes"></div>
+    <div class="muziek-tekst">
+      <div class="muziek-titel" id="mTitel"></div>
+      <div class="muziek-artiest" id="mArtiest"></div>
+    </div>
+    <div class="muziek-knoppen">
+      <button class="icoon-knop" data-media="vorige" aria-label="Vorige"></button>
+      <button class="icoon-knop groot" id="mSpeel" data-media="wissel" aria-label="Afspelen"></button>
+      <button class="icoon-knop" data-media="volgende" aria-label="Volgende"></button>
+    </div>
+  </section>
+
+  <button id="micKnop" aria-label="Vraag iets"></button>
+</main>
+
+<!-- Assistent: verschijnt na het wekwoord -->
+<div id="assist" hidden>
+  <div class="assist-binnen">
+    <div class="vlam" id="vlam"><i></i><i></i><i></i><i></i></div>
+    <div class="assist-label" id="assistLabel">Ik luister…</div>
+    <div class="assist-jij" id="assistJij"></div>
+    <div class="assist-antwoord" id="assistAntwoord"></div>
+  </div>
+</div>
+
+<!-- Weer: verwachting voor de komende dagen -->
+<div class="vel" id="weerVel" hidden>
+  <div class="paneel breed">
+    <div class="paneel-kop"><h2 id="weerTitel">Weer</h2><button class="icoon-knop" data-sluit aria-label="Sluiten"></button></div>
+    <div class="dagen" id="dagen"></div>
+  </div>
+</div>
+
+<!-- Instellingen -->
+<div class="vel" id="instVel" hidden>
+  <div class="paneel">
+    <div class="paneel-kop"><h2>Instellingen</h2><button class="icoon-knop" data-sluit aria-label="Sluiten"></button></div>
+    <div class="paneel-inhoud">
+
+      <h3>Home Assistant</h3>
+      <div class="kaart">
+        <div class="rij"><div><div class="rij-titel" id="haStatus">Niet verbonden</div><div class="rij-sub" id="haUrlTekst"></div></div>
+          <button class="knop accent" id="loginKnop">Inloggen</button></div>
+        <div class="rij kolom"><label class="rij-sub" for="haUrl">Adres</label><input id="haUrl" type="url" spellcheck="false" autocomplete="off"></div>
+        <details class="rij kolom"><summary class="rij-sub">Of plak een token (langlevend toegangstoken)</summary>
+          <div class="naast"><input id="haToken" type="password" placeholder="eyJ…" autocomplete="off"><button class="knop" id="tokenKnop">Opslaan</button></div>
+        </details>
+      </div>
+
+      <h3>Spraak</h3>
+      <div class="kaart">
+        <div class="rij"><div><div class="rij-titel">Wekwoord</div><div class="rij-sub" id="wwSub">Hey Fire</div></div>
+          <label class="schakel"><input type="checkbox" id="wwAan"><i></i></label></div>
+        <div class="rij"><div class="rij-titel">Gevoeligheid</div>
+          <div class="segment" id="gevoelig"><button data-v="laag">Laag</button><button data-v="normaal">Normaal</button><button data-v="hoog">Hoog</button></div></div>
+        <div class="rij kolom"><div class="rij-sub">Zeg het wekwoord om te testen</div><div class="meter"><i id="meter"></i><b id="drempel"></b></div></div>
+        <div class="rij"><div class="rij-titel">Assistent in Home Assistant</div><select id="pipeline"><option value="">Standaard</option></select></div>
+        <div class="rij"><div class="rij-sub">Probeer: "doe de lamp in Tims kamer aan", "wat voor weer wordt het morgen?", "volgend nummer"</div>
+          <button class="knop" id="testKnop">Test</button></div>
+      </div>
+
+      <h3>Scherm</h3>
+      <div class="kaart">
+        <div class="rij"><div class="rij-titel">Thema</div>
+          <div class="segment" id="thema"><button data-v="systeem">Systeem</button><button data-v="licht">Licht</button><button data-v="donker">Donker</button></div></div>
+        <div class="rij"><div><div class="rij-titel">Fotolijst</div><div class="rij-sub" id="fotoSub">Geen foto's</div></div>
+          <div class="segment" id="fotoInterval"><button data-v="15">15 s</button><button data-v="30">30 s</button><button data-v="60">1 min</button><button data-v="300">5 min</button></div></div>
+        <div class="rij"><div><div class="rij-titel">Nachtstand</div><div class="rij-sub">Donker scherm met een kleine klok</div></div>
+          <div class="naast"><input type="time" id="nachtVan"><span class="rij-sub">tot</span><input type="time" id="nachtTot"><label class="schakel"><input type="checkbox" id="nachtAan"><i></i></label></div></div>
+        <div class="rij"><div class="rij-titel">Weer van</div><select id="weerEntity"><option value="">Automatisch</option></select></div>
+      </div>
+
+      <h3>Muziek</h3>
+      <div class="kaart">
+        <div class="rij"><div><div class="rij-titel">Bediening van Spotify en andere apps</div><div class="rij-sub" id="mediaSub"></div></div>
+          <button class="knop" id="mediaKnop">Toegang geven</button></div>
+      </div>
+
+      <h3>Over</h3>
+      <div class="kaart">
+        <div class="rij"><div><div class="rij-titel">Haard</div><div class="rij-sub" id="versie"></div></div><button class="knop" id="updateKnop">Zoek naar updates</button></div>
+        <div class="rij"><div class="rij-titel">Broncode</div><button class="knop" id="bronKnop">GitHub</button></div>
+        <div class="rij" id="uitlogRij" hidden><div class="rij-titel">Uitloggen bij Home Assistant</div><button class="knop gevaar" id="uitlogKnop">Uitloggen</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" hidden></div>
+
+<script src="iconen.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

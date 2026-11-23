@@ -1,0 +1,5 @@
+.DS_Store
+server/.env
+server/data/
+server/wekwoord/werk/
+server/wekwoord/uit/
