@@ -24,3 +24,12 @@ class OpdrachtenTest {
         assertEquals("Wat voor weer wordt het morgen", Opdrachten.versimpel("Wat voor weer wordt het morgen?"))
     }
 }
+
+class BevestigingTest {
+    @org.junit.Test fun belletjeOfVoorlezen() {
+        listOf("Aangezet", "Uitgezet", "Kleur aangepast", "Helderheid aangepast", "Timer gezet voor 10 minuten", "Timer geannuleerd")
+            .forEach { org.junit.Assert.assertTrue(it, Opdrachten.isBevestigingZin(it)) }
+        listOf("Het is 20:08", "Het is dinsdag 24 november 2026", "Nee, die is uit", "Het is 3 graden")
+            .forEach { org.junit.Assert.assertFalse(it, Opdrachten.isBevestigingZin(it)) }
+    }
+}

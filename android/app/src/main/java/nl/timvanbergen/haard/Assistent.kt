@@ -254,16 +254,16 @@ class Assistent(private val ctx: Context) {
             val resp = out.optJSONObject("response") ?: JSONObject()
             val soort = resp.optString("response_type")
             val zin = Opdrachten.vertaalStaat(resp.optJSONObject("speech")?.optJSONObject("plain")?.optString("speech").orEmpty())
-            when (soort) {
+            when {
                 // Gedaan (lamp, timer): meteen een belletje, geen voorgelezen "Aangezet"; Whisper is niet meer nodig
-                "action_done" -> {
+                soort == "action_done" && Opdrachten.isBevestiging(resp, zin) -> {
                     if (runId >= 0) HomeAssistant.Socket.vergeet(runId)
                     runId = -1
                     Geluid.klaar()
                     klaar(zin.ifEmpty { "Gedaan" }, tekst)
                 }
-                // Een antwoord (hoe laat is het): voorlezen
-                "query_answer" -> {
+                // Een antwoord (hoe laat is het, is de lamp aan): voorlezen
+                soort == "action_done" || soort == "query_answer" -> {
                     if (runId >= 0) HomeAssistant.Socket.vergeet(runId)
                     runId = -1
                     antwoord = StringBuilder(zin)
@@ -397,7 +397,9 @@ class Assistent(private val ctx: Context) {
                 val ruw = out.optJSONObject("response")?.optJSONObject("speech")?.optJSONObject("plain")?.optString("speech").orEmpty()
                 val tekst = Opdrachten.vertaalStaat(ruw)
                 // Gedaan door Home Assistant zelf (lamp, timer): niet wachten op een voorgelezen "Aangezet"
-                if (data.optBoolean("processed_locally") && out.optJSONObject("response")?.optString("response_type") == "action_done" && !doorpraten) {
+                val resp = out.optJSONObject("response") ?: JSONObject()
+                if (data.optBoolean("processed_locally") && resp.optString("response_type") == "action_done" &&
+                    Opdrachten.isBevestiging(resp, tekst) && !doorpraten) {
                     Geluid.klaar()
                     klaar(tekst.ifEmpty { "Gedaan" }, jij)
                     return
@@ -539,6 +541,20 @@ object Opdrachten {
         return t
     }
 
+    /**
+     * Is dit antwoord van Home Assistant alleen een bevestiging ("Aangezet", "Timer gezet")? Dan volstaat een belletje.
+     * HA noemt ook "Het is 20:08" "gedaan", dus: er moet iets veranderd zijn, of het is een bekende bevestiging.
+     */
+    fun isBevestiging(resp: JSONObject, zin: String): Boolean {
+        val gelukt = resp.optJSONObject("data")?.optJSONArray("success")?.length() ?: 0
+        return gelukt > 0 || isBevestigingZin(zin)
+    }
+
+    fun isBevestigingZin(zin: String): Boolean {
+        return Regex("^(aangezet|uitgezet|gedaan|ok[eé]?|timer (gezet|geannuleerd|gepauzeerd|hervat|aangepast)|.*\\b(aangepast|geopend|gesloten|gepauzeerd|hervat|gestopt|ingesteld))\\b",
+            RegexOption.IGNORE_CASE).containsMatchIn(zin.trim())
+    }
+
     /** Home Assistant zegt soms de Engelse toestand ("Nee, die is off"): naar gewoon Nederlands. */
     fun vertaalStaat(zin: String): String {
         val woorden = mapOf("off" to "uit", "on" to "aan", "unavailable" to "niet bereikbaar", "unknown" to "onbekend",
@@ -546,6 +562,8 @@ object Opdrachten {
             "idle" to "niet actief", "standby" to "stand-by", "heat" to "verwarmen", "cool" to "koelen", "locked" to "op slot", "unlocked" to "open")
         return Regex("\\b(not_home|unavailable|unknown|closed|playing|paused|standby|unlocked|locked|idle|heat|cool|home|off|on)\\b")
             .replace(zin) { woorden[it.value] ?: it.value }
+            // "0.1 graden" klinkt raar: hele graden
+            .replace(Regex("(-?\\d+)[.,](\\d+)(?= graden)")) { Math.round(it.value.replace(',', '.').toDouble()).toString() }
     }
 
     /** "Speel Frenna", "speel het album Ye op de Sonos" → (wat, waar). Niet "speel verder": dat doet [herken]. */

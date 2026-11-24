@@ -19,5 +19,7 @@ class WeerTest {
         assertEquals("Ja, die is aan", Opdrachten.vertaalStaat("Ja, die is on"))
         assertEquals("De lamp is niet bereikbaar", Opdrachten.vertaalStaat("De lamp is unavailable"))
         assertEquals("Ik ben online", Opdrachten.vertaalStaat("Ik ben online"))
+        assertEquals("0 graden en zonnig", Opdrachten.vertaalStaat("0.1 graden en zonnig"))
+        assertEquals("Het is 19 graden", Opdrachten.vertaalStaat("Het is 18,6 graden"))
     }
 }
