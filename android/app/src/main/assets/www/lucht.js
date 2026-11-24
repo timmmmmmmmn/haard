@@ -94,6 +94,7 @@
     // Neerslag gaat voor; met kerst valt er anders zachte sneeuw
     if (groep === 'regen' || groep === 'onweer') maak(staat.weer === 'pouring' ? 150 : 90, 'regen');
     else if (groep === 'sneeuw' || s === 'kerst') maak(groep === 'sneeuw' ? 70 : 40, 'sneeuw');
+    kiesTempo();
   }
 
   function maak(n, soort) {
@@ -168,11 +169,25 @@
     cx.globalAlpha = 1; cx.globalCompositeOperation = 'source-over';
   }
 
-  var vorige = 0, laatst = 0, loopt = false;
+  // Zo weinig beelden als het kan (de Fire is zuinig): neerslag en vuurwerk 25 per seconde,
+  // langzaam drijvende wolken en twinkelende sterren 8 per seconde, een stille lucht 1 per seconde.
+  var vorige = 0, laatst = 0, loopt = false, tussen = 125;
+  function kiesTempo() {
+    var s = staat.feest;
+    tussen = deeltjes.length || s === 'vuurwerk' || s === 'kerst' ? 40 : wolken.length || sterren.length ? 125 : 1000;
+  }
+  var keten = 0; // elke start krijgt een nummer: een oude lus stopt vanzelf
+  function lus(mijn) {
+    return function beeldVan(ms) {
+      if (!loopt || mijn !== keten) return;
+      // Bij een laag tempo niet elk schermbeeld wakker worden, maar pas vlak voor het volgende beeld
+      if (tussen >= 125) setTimeout(function () { requestAnimationFrame(beeldVan); }, tussen - 20);
+      else requestAnimationFrame(beeldVan);
+      beeld(ms);
+    };
+  }
   function beeld(ms) {
-    if (!loopt) return;
-    requestAnimationFrame(beeld);
-    if (ms - laatst < 33) return; // ~30 beelden per seconde is genoeg en spaart de tablet
+    if (ms - laatst < tussen - 25) return;
     var dt = Math.min(.1, (ms - (vorige || ms)) / 1000), t = ms / 1000;
     vorige = laatst = ms;
     cx.clearRect(0, 0, B, H);
@@ -193,7 +208,7 @@
 
   function zetLoop() {
     var aan = !document.hidden && !document.documentElement.classList.contains('nacht') && !document.documentElement.classList.contains('met-fotos') && !document.documentElement.classList.contains('met-muziek');
-    if (aan && !loopt) { loopt = true; vorige = 0; requestAnimationFrame(beeld); }
+    if (aan && !loopt) { loopt = true; vorige = 0; requestAnimationFrame(lus(++keten)); }
     if (!aan) { loopt = false; cx.clearRect(0, 0, B, H); }
   }
 

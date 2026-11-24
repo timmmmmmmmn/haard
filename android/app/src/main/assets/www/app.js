@@ -177,7 +177,7 @@
     verwachting.slice(0, 6).forEach(function (v, i) {
       var d = new Date(v.datetime);
       var naam = i === 0 ? 'vandaag' : i === 1 ? 'morgen' : DAGEN[d.getDay()].slice(0, 2);
-      h += '<div class="dag"><div class="dag-naam">' + naam + '</div>' + (WEER[v.condition] || WEER.cloudy) +
+      h += '<div class="dag"><div class="dag-naam">' + naam + '</div>' + (WEER[v.condition === 'clear-night' ? 'sunny' : v.condition] || WEER.cloudy) +
         '<div><span class="dag-max">' + graden(v.temperature) + '</span><span class="dag-min">' + graden(v.templow) + '</span></div>' +
         '<div class="dag-regen">' + (v.precipitation_probability ? Math.round(v.precipitation_probability) + '%' : (v.precipitation ? v.precipitation + ' mm' : '')) + '</div></div>';
     });

@@ -36,14 +36,26 @@ class Wekwoord(ctx: Context, model: File?) : AutoCloseable {
     private val features = ArrayDeque<FloatArray>()
     private val invoer = FloatArray(BLOK + OVERLAP)
 
+    // Zuinig bij stilte: het melspectrogram (goedkoop) loopt altijd door, maar de embedding (duur) wordt
+    // pas uitgerekend als er geluid is, en dan meteen voor alle overgeslagen blokken. De uitkomst is
+    // daardoor precies hetzelfde als altijd rekenen, maar in een stille kamer kost het bijna niets.
+    private var framesTotaal = 0L                    // hoeveel mel-frames er ooit zijn binnengekomen
+    private val wachtend = ArrayDeque<Long>()        // einde (in frames) van blokken zonder embedding
+    private var ruis = 200f                          // geschat achtergrondgeluid (RMS)
+    private var luidTot = 0                          // na geluid nog even blijven rekenen (blokken)
+    private val melMax get() = MEL_VENSTER + 10 * nFeatures
+
     private fun sessie(bytes: ByteArray) = env.createSession(bytes, opties)
 
     /** Eén blok van precies 1280 samples (16 kHz, mono). Geeft de kans op het wekwoord terug. */
     fun verwerk(pcm: ShortArray): Float {
         require(pcm.size == BLOK)
         System.arraycopy(vorige, 0, invoer, 0, OVERLAP)
-        for (i in 0 until BLOK) invoer[OVERLAP + i] = pcm[i].toFloat()
+        var som = 0.0
+        for (i in 0 until BLOK) { val s = pcm[i].toFloat(); invoer[OVERLAP + i] = s; som += s * s }
         System.arraycopy(invoer, BLOK, vorige, 0, OVERLAP)
+        val rms = Math.sqrt(som / BLOK).toFloat()
+        ruis = if (rms < ruis) ruis * 0.9f + rms * 0.1f else ruis * 0.998f + rms * 0.002f
 
         // Melspectrogram: [1, samples] → [1, 1, frames, 32], daarna x/10 + 2 zoals in openWakeWord
         OnnxTensor.createTensor(env, FloatBuffer.wrap(invoer), longArrayOf(1, invoer.size.toLong())).use { t ->
@@ -55,19 +67,26 @@ class Wekwoord(ctx: Context, model: File?) : AutoCloseable {
                     for (j in 0 until 32) rij[j] = uit.get() / 10f + 2f
                     melBuf.addLast(rij)
                 }
+                framesTotaal += frames
             }
         }
-        while (melBuf.size > MEL_VENSTER) melBuf.removeFirst()
+        while (melBuf.size > melMax) melBuf.removeFirst()
         if (melBuf.size < MEL_VENSTER) return 0f
 
-        // Embedding van de laatste 76 frames: [1, 76, 32, 1] → 96 getallen
-        val venster = FloatArray(MEL_VENSTER * 32)
-        melBuf.forEachIndexed { i, rij -> System.arraycopy(rij, 0, venster, i * 32, 32) }
-        OnnxTensor.createTensor(env, FloatBuffer.wrap(venster), longArrayOf(1, MEL_VENSTER.toLong(), 32, 1)).use { t ->
-            emb.run(mapOf(emb.inputNames.first() to t)).use { r ->
-                val uit = (r[0] as OnnxTensor).floatBuffer
-                features.addLast(FloatArray(96) { uit.get() })
-            }
+        // Stil (niet duidelijk boven het achtergrondgeluid): embedding uitstellen
+        if (rms > ruis * 2f + 40f) luidTot = 20 else if (luidTot > 0) luidTot--
+        wachtend.addLast(framesTotaal)
+        if (luidTot == 0) {
+            if (wachtend.size > nFeatures) { wachtend.removeFirst(); features.clear() }
+            return 0f
+        }
+        // Geluid: alle uitgestelde blokken (in volgorde) en dit blok uitrekenen
+        val eerste = framesTotaal - melBuf.size
+        while (wachtend.isNotEmpty()) {
+            val eind = wachtend.removeFirst()
+            val begin = (eind - MEL_VENSTER - eerste).toInt()
+            if (begin < 0) continue
+            embedding(begin)
         }
         while (features.size > nFeatures) features.removeFirst()
         if (features.size < nFeatures) return 0f
@@ -81,9 +100,22 @@ class Wekwoord(ctx: Context, model: File?) : AutoCloseable {
         }
     }
 
+    /** Embedding van 76 mel-frames vanaf positie [begin] in de buffer: [1, 76, 32, 1] → 96 getallen. */
+    private fun embedding(begin: Int) {
+        val venster = FloatArray(MEL_VENSTER * 32)
+        for (i in 0 until MEL_VENSTER) System.arraycopy(melBuf[begin + i], 0, venster, i * 32, 32)
+        OnnxTensor.createTensor(env, FloatBuffer.wrap(venster), longArrayOf(1, MEL_VENSTER.toLong(), 32, 1)).use { t ->
+            emb.run(mapOf(emb.inputNames.first() to t)).use { r ->
+                val uit = (r[0] as OnnxTensor).floatBuffer
+                features.addLast(FloatArray(96) { uit.get() })
+            }
+        }
+    }
+
     /** Na een detectie opnieuw beginnen, zodat hetzelfde woord niet twee keer telt. */
     fun leeg() {
         features.clear()
+        wachtend.clear()
     }
 
     override fun close() {
