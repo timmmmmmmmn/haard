@@ -1,28 +1,38 @@
+# /etc/systemd/system/haard-dag.service
 [Unit]
 Description=Haard: zware klussen overdag
 After=docker.service network-online.target
 [Service]
 User=tim
-ExecStartPre=+/usr/bin/cpupower frequency-set -g performance -u 4GHz
 ExecStart=/home/tim/haard/dagwerk.sh
 Nice=19
 CPUSchedulingPolicy=idle
 IOSchedulingClass=idle
+
+# /etc/systemd/system/haard-dag.timer
 [Timer]
-OnCalendar=*-*-* 08:30
+OnCalendar=*-*-* 10:30
 OnBootSec=2min
 [Install]
 WantedBy=timers.target
+
+# /etc/systemd/system/haard-stand.service
 [Unit]
-Description=Haard: nachtrust (klussen stoppen, cpu zuinig en stil)
+Description=Haard: dag- of nachtstand van de pc (stil 's nachts)
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/systemctl stop haard-dag.service
-ExecStart=/usr/bin/cpupower frequency-set -g powersave -u 1.6GHz
+ExecStart=/home/tim/haard/stand.sh
+
+# /etc/systemd/system/haard-stand.timer
 [Timer]
-OnCalendar=*-*-* 22:00
+OnCalendar=*-*-* 23:00
+OnCalendar=Mon..Fri *-*-* 08:00
+OnCalendar=Sat,Sun *-*-* 10:00
+OnBootSec=1min
 [Install]
 WantedBy=timers.target
+
+# /etc/systemd/system/haard-voorrang.service
 [Unit]
 Description=Haard: training pauzeren zolang er gesproken wordt
 [Service]
@@ -31,3 +41,16 @@ ExecStopPost=/usr/bin/systemctl kill -s CONT haard-dag.service
 Restart=always
 [Install]
 WantedBy=multi-user.target
+
+# /etc/systemd/system/haard-opwarmen.service
+[Unit]
+Description=Haard: taalmodel na het opstarten laden
+After=docker.service network-online.target
+[Service]
+Type=oneshot
+User=tim
+ExecStart=/home/tim/haard/opwarmen.sh
+TimeoutStartSec=900
+[Install]
+WantedBy=multi-user.target
+
