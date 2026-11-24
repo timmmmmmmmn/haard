@@ -16,23 +16,26 @@ object Geluid {
     private val klaar by lazy { maak(listOf(880.0 to 0.08, 660.0 to 0.14)) }
     private val fout by lazy { maak(listOf(330.0 to 0.12, 247.0 to 0.2)) }
 
-    fun luister() = speel(luister)
-    fun klaar() = speel(klaar)
-    fun fout() = speel(fout)
+    // Een belletje mag nooit de app laten vallen: lukt het maken of afspelen niet, dan gewoon geen belletje
+    fun luister() { runCatching { speel(luister) } }
+    fun klaar() { runCatching { speel(klaar) } }
+    fun fout() { runCatching { speel(fout) } }
 
     /** Opeenvolgende tonen (frequentie, duur), elk met een zachte aanzet en uitsterven. */
     private fun maak(tonen: List<Pair<Double, Double>>): ShortArray {
-        val uit = ArrayList<Short>()
-        for ((f, duur) in tonen) {
-            val n = (RATE * duur).toInt()
-            for (i in 0 until n) {
+        // Vaste buffer (hooguit een halve seconde per toon): geen lijst die kan blijven groeien
+        val lengtes = tonen.map { (RATE * it.second).toInt().coerceIn(0, RATE / 2) }
+        val uit = ShortArray(lengtes.sum())
+        var k = 0
+        tonen.forEachIndexed { j, (f, _) ->
+            for (i in 0 until lengtes[j]) {
                 val t = i.toDouble() / RATE
                 val aanzet = minOf(1.0, i / (RATE * 0.008))
                 val v = sin(2 * PI * f * t) * 0.6 + sin(4 * PI * f * t) * 0.12
-                uit.add((v * aanzet * exp(-t * 9) * 0.45 * Short.MAX_VALUE).toInt().toShort())
+                uit[k++] = (v * aanzet * exp(-t * 9) * 0.45 * Short.MAX_VALUE).toInt().toShort()
             }
         }
-        return uit.toShortArray()
+        return uit
     }
 
     private fun speel(pcm: ShortArray) {
