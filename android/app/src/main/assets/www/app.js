@@ -212,6 +212,27 @@
 
   // ---------- Muziek ----------
   var media = {};
+  // ---------- Timers (gezet via Home Assistant: "zet een timer van tien minuten") ----------
+  var timers = [];
+  var TIMER_ICOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg>';
+  berichten.timers = function (d) { timers = d.lijst || []; toonTimers(); };
+  function toonTimers() {
+    var h = '';
+    timers.forEach(function (t) {
+      var over = t.loopt ? Math.max(0, t.over - Math.floor((Date.now() - t.sinds) / 1000)) : t.over;
+      var u = Math.floor(over / 3600), m = Math.floor(over % 3600 / 60), s = over % 60;
+      h += '<div class="timer">' + TIMER_ICOON + (u ? u + ':' + twee(m) : m) + ':' + twee(s) +
+        (t.naam ? '<small>' + t.naam.replace(/</g, '&lt;') + '</small>' : '') + '</div>';
+    });
+    $('timers').innerHTML = h;
+  }
+  setInterval(function () { if (timers.length) toonTimers(); }, 1000);
+  berichten.timerKlaar = function (d) {
+    $('timerKlaar').hidden = !!d.weg;
+    $('tkNaam').textContent = d.naam || '';
+  };
+  $('tkStop').addEventListener('click', function () { N.timerStop(); $('timerKlaar').hidden = true; });
+
   // Nu speelt: hoes als wazige achtergrond, klok links, voortgang die zelf doortelt.
   // Na tien minuten pauze komt de gewone lucht terug.
   var hoesUrl = '', pauzeSinds = 0;
@@ -459,6 +480,7 @@
         haard.bericht('media', { toegang: true, actief: true, speelt: true, titel: 'Midnight City', artiest: 'M83', app: 'Spotify', hoesUrl: demoHoes(),
           positie: 83000, tijdstip: Date.now(), duur: 243000 });
       }
+      if (location.hash === '#timer') haard.bericht('timers', { lijst: [{ id: 'a', naam: 'pasta', over: 538, loopt: true, sinds: Date.now() }] });
       if (location.hash === '#inst') document.getElementById('instKnop').click();
       if (location.hash === '#weer') setTimeout(function () { document.getElementById('weerKnop').click(); }, 100);
       if (location.hash === '#assist') haard.bericht('assist', { fase: 'spreken', jij: 'Wat voor weer wordt het morgen?', antwoord: 'Morgen wordt het bewolkt met regen, tussen de 3 en 9 graden.' });
@@ -477,7 +499,7 @@
       },
       ws: function (id) { setTimeout(function () { haard.antwoord(id, 200, JSON.stringify({ result: { pipelines: [{ id: 'a', name: 'Haard' }], preferred_pipeline: 'a' } })); }, 30); },
       luister: function () { haard.bericht('assist', { fase: 'luisteren' }); },
-      stop: function () {}, media: function () {}, mediaToegang: function () {}, meten: function () {}, fotos: function () {},
+      stop: function () {}, media: function () {}, timerStop: function () {}, mediaToegang: function () {}, meten: function () {}, fotos: function () {},
       helderheid: function () {}, update: function () {}, open: function (u) { window.open(u); },
       login: function () {}, token: function () {}, uitloggen: function () {}
     };

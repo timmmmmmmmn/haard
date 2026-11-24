@@ -20,6 +20,8 @@
     <button class="icoon-knop" id="instKnop" aria-label="Instellingen"></button>
   </header>
 
+  <div id="timers"></div>
+
   <section id="klok">
     <div class="tijd"><span id="uur">--</span><span class="dp">:</span><span id="min">--</span></div>
     <div class="onder">
@@ -123,6 +125,14 @@
       </div>
     </div>
   </div>
+</div>
+
+<!-- Een timer is klaar: tik om te stoppen -->
+<div id="timerKlaar" hidden>
+  <div class="tk-ring"></div>
+  <div class="tk-titel">Timer klaar</div>
+  <div class="tk-naam" id="tkNaam"></div>
+  <button class="tk-stop" id="tkStop">Stop</button>
 </div>
 
 <div id="toast" hidden></div>

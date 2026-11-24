@@ -42,6 +42,7 @@ class HaardService : Service() {
             acquire()
         }
         HomeAssistant.Socket.start()
+        Esphome.start(this)
         start()
         stilteKlok.run()
     }
@@ -89,6 +90,11 @@ class HaardService : Service() {
     }
 
     private fun start() {
+        // Microfoon uit (schakelaar in Home Assistant): helemaal niet opnemen
+        if (Instellingen.prefs.getBoolean("microfoon_uit", false)) {
+            Bus.stuur("wekwoord", JSONObject().put("aan", false).put("fout", "Microfoon staat uit"))
+            return
+        }
         aan = true
         lus = Thread({ luister() }, "microfoon").apply { start() }
     }

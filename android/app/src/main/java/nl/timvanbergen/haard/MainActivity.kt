@@ -264,6 +264,8 @@ class MainActivity : ComponentActivity() {
 
         @JavascriptInterface fun media(actie: String) = Media.actie(actie)
 
+        @JavascriptInterface fun timerStop() = Esphome.stopBel()
+
         @JavascriptInterface fun mediaToegang() = runOnUiThread {
             runCatching { startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
         }

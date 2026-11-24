@@ -148,6 +148,24 @@ html.nacht #assist { background: #000; color: #6e2a12; }
 html.nacht #assist .assist-label, html.nacht #assist .assist-jij, html.nacht #assist .assist-antwoord { color: #6e2a12; }
 html.nacht .vlam i { background: #6e2a12 !important; animation: none !important; }
 
+/* ---------- Timers ---------- */
+#timers { position: absolute; top: 20px; left: 24px; display: flex; flex-direction: column; align-items: flex-start; }
+.timer { display: flex; align-items: center; padding: 8px 16px 8px 10px; margin-bottom: 8px; border-radius: 26px; color: #fff;
+  background: rgba(0,0,0,.28); font-size: 22px; font-weight: 400; font-variant-numeric: tabular-nums; text-shadow: none; }
+.timer svg { width: 26px; height: 26px; margin-right: 8px; }
+.timer small { font-size: 16px; opacity: .75; margin-left: 10px; }
+#timerKlaar { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; background: rgba(8,10,16,.92); color: #fff; }
+.tk-ring { width: 150px; height: 150px; border-radius: 50%; border: 6px solid var(--accent2); animation: tkAdem 2s ease-in-out infinite; }
+@keyframes tkAdem { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.08); opacity: .6; } }
+.tk-titel { font-size: 54px; font-weight: 300; margin-top: 30px; }
+.tk-naam { font-size: 26px; opacity: .7; margin-top: 6px; min-height: 30px; }
+.tk-stop { margin-top: 34px; padding: 16px 64px; border-radius: 40px; background: #fff; color: #111; font-size: 24px; font-weight: 500; }
+html.nacht #timerKlaar { background: #000; color: #6e2a12; }
+html.nacht .tk-ring { border-color: #6e2a12; animation: none; }
+html.nacht .tk-stop { background: #2a0f06; color: #6e2a12; }
+html.nacht #timers .timer { background: none; color: #6e2a12; }
+
 /* ---------- Assistent ---------- */
 #assist { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 20; display: flex; align-items: center; justify-content: center;
   background: rgba(10, 6, 4, .94); color: #fff; animation: verschijn .25s ease; }

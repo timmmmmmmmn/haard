@@ -99,6 +99,8 @@ class Assistent(private val ctx: Context) {
         val m = JSONObject().put("type", "assist_pipeline/run").put("start_stage", van).put("end_stage", tot)
         Instellingen.pipeline.takeIf { it.isNotEmpty() }?.let { m.put("pipeline", it) }
         gesprek?.let { m.put("conversation_id", it) }
+        // Het apparaat in Home Assistant: dan weet hij de kamer ("doe het licht aan") en kunnen timers
+        Esphome.apparaat?.let { m.put("device_id", it) }
         return m
     }
 
@@ -175,7 +177,7 @@ class Assistent(private val ctx: Context) {
         val zelf = Opdrachten.herken(tekst)
         if (zelf != null) {
             when (zelf.first) {
-                "stop" -> Unit
+                "stop" -> Esphome.stopBel()
                 "volume" -> Media.zetVolume(ctx, zelf.second.toInt())
                 else -> Media.actie(zelf.first)
             }
