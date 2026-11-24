@@ -20,13 +20,13 @@ sudo pacman -S --needed --noconfirm git wget espeak-ng ffmpeg
 PIP="uv pip install"
 
 stap "Code ophalen"
-[ -d piper-sample-generator ] || git clone https://github.com/rhasspy/piper-sample-generator
+[ -d piper-sample-generator ] || git clone -b v2.0.0 https://github.com/rhasspy/piper-sample-generator
 [ -f piper-sample-generator/models/en_US-libritts_r-medium.pt ] || wget -q -O piper-sample-generator/models/en_US-libritts_r-medium.pt \
   https://github.com/rhasspy/piper-sample-generator/releases/download/v2.0.0/en_US-libritts_r-medium.pt
 [ -d openwakeword ] || git clone https://github.com/dscripka/openWakeWord openwakeword
 
 $PIP --index-url https://download.pytorch.org/whl/cpu torch==2.1.2 torchaudio==2.1.2
-$PIP piper-phonemize webrtcvad
+$PIP piper-phonemize webrtcvad "setuptools<70"
 $PIP -e ./openwakeword --no-deps
 $PIP onnxruntime tqdm scipy scikit-learn pyyaml numpy==1.26.4 \
   mutagen==1.47.0 torchinfo==1.8.0 torchmetrics==1.2.0 speechbrain==0.5.14 \
