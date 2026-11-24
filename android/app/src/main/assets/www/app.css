@@ -65,9 +65,6 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(235,238,242,.55) 40%, rgba(235,238,242,.75)); animation: mist 30s ease-in-out infinite alternate; }
 #lucht.deel-nacht.weer-mist::after { background: linear-gradient(to bottom, rgba(60,66,76,0), rgba(60,66,76,.5) 50%, rgba(60,66,76,.7)); }
 @keyframes mist { from { transform: translateX(-4%); } to { transform: translateX(4%); } }
-/* Halloween: een grote oranje maan waar de vleermuizen voor langs vliegen */
-#lucht.feest-halloween::before { opacity: 1 !important; width: 120px; height: 120px; right: 120px; top: 14px; bottom: auto;
-  background: radial-gradient(circle at 40% 40%, #ffd28a, #f39a3c 60%, #d9702a); box-shadow: 0 0 90px 30px rgba(255,150,60,.25); }
 html.met-fotos #lucht { display: none; }
 
 #waas { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; opacity: 0; transition: opacity 1s;
@@ -100,34 +97,47 @@ html.met-fotos #rust { --tekst: #fff; --zacht: rgba(255,255,255,.8); color: #fff
 #weerKnop:active { background: rgba(255,255,255,.3); }
 .weer-icoon svg { width: 38px; height: 38px; display: block; margin-right: 8px; filter: drop-shadow(0 1px 4px rgba(0,0,0,.2)); }
 .weer-zin { display: none; }
-.feest-regel { margin-top: 14px; font-size: 24px; font-weight: 400; letter-spacing: .3px; opacity: .92; }
 html.lucht-licht #klok { color: #23303e; text-shadow: 0 2px 20px rgba(255,255,255,.4); }
 html.lucht-licht #weerKnop { background: rgba(0,0,0,.08); }
 
-/* Muziekkaart: alleen zichtbaar als er iets speelt of gepauzeerd is */
-#muziek { position: absolute; right: 28px; bottom: 28px; width: 340px; display: flex; flex-wrap: wrap; align-items: center;
-  background: rgba(30, 22, 18, .78); border: 1px solid rgba(255,255,255,.06); border-radius: 24px; padding: 14px; box-shadow: var(--schaduw); color: #fff; }
-html[data-theme="licht"] #muziek { background: var(--vlak); border-color: var(--lijn); color: var(--tekst); }
-.hoes { width: 72px; height: 72px; border-radius: 14px; background: rgba(255,255,255,.06) center/cover no-repeat; flex: none; display: flex;
-  align-items: center; justify-content: center; color: var(--zacht); }
-.hoes svg { width: 30px; height: 30px; }
+/* Nu speelt: de hoes wordt de achtergrond (wazig, langzaam bewegend), de klok schuift naar links
+   en rechts staat de hoes groot met titel, voortgang en knoppen. */
+#hoesLucht { position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; opacity: 0; transition: opacity 1.2s; pointer-events: none; }
+#hoesDoek { position: absolute; left: -25%; top: -25%; width: 150%; height: 150%; animation: drijf 60s ease-in-out infinite alternate; }
+#hoesLucht i { position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(100deg, rgba(0,0,0,.5) 0%, rgba(0,0,0,.22) 55%, rgba(0,0,0,.35) 100%); }
+@keyframes drijf { 0% { transform: rotate(0deg) scale(1); } 50% { transform: rotate(8deg) scale(1.12) translate(3%, -2%); } 100% { transform: rotate(-6deg) scale(1.05) translate(-3%, 2%); } }
+html.met-muziek #hoesLucht { opacity: 1; }
+html.met-muziek #lucht { opacity: 0; transition: opacity 1.2s; }
+html.muziek-pauze #hoesDoek { animation-play-state: paused; }
+
+#muziek { position: absolute; right: 64px; top: 50%; transform: translateY(-50%); width: 290px; color: #fff; text-align: center;
+  text-shadow: 0 1px 12px rgba(0,0,0,.3); }
+.hoes { width: 290px; height: 290px; border-radius: 22px; background: rgba(255,255,255,.08) center/cover no-repeat; display: flex;
+  align-items: center; justify-content: center; color: rgba(255,255,255,.6); box-shadow: 0 24px 60px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.08);
+  transition: transform .6s cubic-bezier(.2,.8,.2,1), opacity .6s; }
+html.muziek-pauze .hoes { transform: scale(.9); opacity: .75; }
+.hoes svg { width: 64px; height: 64px; }
 .hoes.met-plaatje svg { display: none; }
-.muziek-tekst { flex: 1; min-width: 0; margin-left: 14px; }
-.muziek-titel { font-size: 19px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.muziek-artiest { font-size: 15px; opacity: .7; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.muziek-knoppen { width: 100%; display: flex; justify-content: center; align-items: center; margin-top: 10px; }
-.muziek-knoppen .icoon-knop { color: inherit; margin: 0 12px; }
-.muziek-knoppen .icoon-knop.groot { width: 56px; height: 56px; background: var(--accent); color: var(--op-accent); }
-.muziek-knoppen .icoon-knop.groot svg { width: 22px; height: 22px; }
-/* Met muziek schuift het weer omhoog */
-html.met-muziek #klok { text-align: left; left: 56px; transform: translateY(-62%); }
-html.met-muziek .tijd { font-size: 220px; letter-spacing: -8px; }
-html.met-muziek .onder { justify-content: flex-start; font-size: 28px; margin-left: 8px; }
-html.met-muziek .feest-regel { margin-left: 8px; }
-html.met-muziek #boven { top: auto; bottom: 200px; }
+.muziek-titel { font-size: 24px; font-weight: 600; margin-top: 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.muziek-artiest { font-size: 18px; font-weight: 300; opacity: .8; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.voortgang { height: 4px; border-radius: 2px; background: rgba(255,255,255,.22); margin-top: 18px; overflow: hidden; }
+.voortgang i { display: block; height: 100%; width: 0; border-radius: 2px; background: var(--muziek, #fff); transition: width 1s linear; }
+.muziek-tijden { display: flex; justify-content: space-between; font-size: 13px; opacity: .65; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.muziek-knoppen { display: flex; justify-content: center; align-items: center; margin-top: 4px; }
+.muziek-knoppen .icoon-knop { color: #fff; margin: 0 14px; opacity: .9; }
+.muziek-knoppen .icoon-knop.groot { width: 60px; height: 60px; background: #fff; color: #111; opacity: 1; box-shadow: 0 8px 24px rgba(0,0,0,.3); }
+.muziek-knoppen .icoon-knop.groot svg { width: 24px; height: 24px; }
+
+html.met-muziek #klok { text-align: left; left: 64px; right: auto; transform: translateY(-56%); }
+html.met-muziek .tijd { font-size: 190px; letter-spacing: -7px; }
+html.met-muziek .tijd .dp { color: var(--muziek, #fff); }
+html.met-muziek .onder { justify-content: flex-start; font-size: 26px; margin-left: 6px; }
+html.met-muziek #klok, html.met-muziek #weerKnop { color: #fff; }
+html.met-muziek #weerKnop { background: rgba(255,255,255,.14); }
 
 /* Nachtstand: alleen een kleine, donkerrode klok — niets beweegt, niets licht op */
-html.nacht #fotos, html.nacht #lucht, html.nacht #waas, html.nacht #boven, html.nacht #muziek, html.nacht #weerKnop, html.nacht .feest-regel { display: none !important; }
+html.nacht #fotos, html.nacht #lucht, html.nacht #waas, html.nacht #boven, html.nacht #muziek, html.nacht #weerKnop, html.nacht #hoesLucht { display: none !important; }
 html.nacht body, html.nacht #rust { background: #000; }
 html.nacht #klok { left: 0; right: 0; text-align: center; text-shadow: none; transform: translateY(-54%); }
 html.nacht .tijd { font-size: 150px; letter-spacing: -5px; color: #6e2a12; }

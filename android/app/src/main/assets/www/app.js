@@ -212,20 +212,70 @@
 
   // ---------- Muziek ----------
   var media = {};
+  // Nu speelt: hoes als wazige achtergrond, klok links, voortgang die zelf doortelt.
+  // Na tien minuten pauze komt de gewone lucht terug.
+  var hoesUrl = '', pauzeSinds = 0;
   berichten.media = function (d) {
     media = d;
-    $('muziek').hidden = !d.actief;
-    html.classList.toggle('met-muziek', !!d.actief);
     $('mediaSub').textContent = d.toegang ? 'Toegang gegeven' : 'Nodig om te zien wat er speelt';
     $('mediaKnop').textContent = d.toegang ? 'Instellingen' : 'Toegang geven';
+    if (d.actief && !d.speelt) pauzeSinds = pauzeSinds || Date.now(); else pauzeSinds = 0;
+    toonMuziek();
     if (!d.actief) return;
     $('mTitel').textContent = d.titel || 'Onbekend nummer';
-    $('mArtiest').textContent = [d.artiest, d.app].filter(Boolean).join(' · ');
+    $('mArtiest').textContent = d.artiest || d.app || '';
     $('mSpeel').innerHTML = d.speelt ? ICONEN.pauze : ICONEN.speel;
-    var h = $('hoes');
-    h.style.backgroundImage = d.hoes ? 'url("/__hoes?v=' + d.hoes + '")' : '';
-    h.classList.toggle('met-plaatje', !!d.hoes);
+    var url = d.hoesUrl || (d.hoes ? '/__hoes?v=' + d.hoes : '');
+    if (url !== hoesUrl) { hoesUrl = url; laadHoes(url); }
+    voortgang();
   };
+
+  function toonMuziek() {
+    var aan = !!media.actief && !(pauzeSinds && Date.now() - pauzeSinds > 600000);
+    $('muziek').hidden = !aan;
+    html.classList.toggle('met-muziek', aan);
+    html.classList.toggle('muziek-pauze', aan && !media.speelt);
+  }
+
+  function laadHoes(url) {
+    var h = $('hoes');
+    h.style.backgroundImage = url ? 'url("' + url + '")' : '';
+    h.classList.toggle('met-plaatje', !!url);
+    if (!url) { kleurAchtergrond(null); return; }
+    var img = new Image();
+    img.onload = function () { kleurAchtergrond(img); };
+    img.src = url;
+  }
+
+  /** Tekent de hoes heel klein; groot geschaald wordt dat vanzelf een zachte waas. Kiest ook de sterkste kleur. */
+  function kleurAchtergrond(img) {
+    var c = $('hoesDoek'), x = c.getContext('2d');
+    if (!img) { x.fillStyle = '#2a2230'; x.fillRect(0, 0, c.width, c.height); html.style.removeProperty('--muziek'); return; }
+    // Eerst de kleur kiezen uit een scherpe versie, dan de waas: vervaagd en iets voller van kleur
+    x.filter = 'none'; x.drawImage(img, 0, 0, c.width, c.height);
+    var p = x.getImageData(0, 0, c.width, c.height).data, beste = -1, kleur = null;
+    for (var i = 0; i < p.length; i += 4) {
+      var r = p[i], g = p[i + 1], b = p[i + 2], max = Math.max(r, g, b), min = Math.min(r, g, b);
+      var score = (max - min) * (max > 60 ? 1 : 0.2) + max * 0.15; // verzadigd en niet te donker
+      if (score > beste) { beste = score; kleur = [r, g, b]; }
+    }
+    // Een beetje lichter, zodat het op de donkere waas goed opvalt
+    x.filter = 'blur(3px) saturate(1.3)';
+    x.drawImage(img, -6, -6, c.width + 12, c.height + 12);
+    x.filter = 'none';
+    if (kleur) html.style.setProperty('--muziek', 'rgb(' + kleur.map(function (v) { return Math.round(v + (255 - v) * .35); }).join(',') + ')');
+  }
+
+  function mmss(ms) { var s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + twee(s % 60); }
+  function voortgang() {
+    var d = media;
+    if (!d.actief || !d.duur) { $('mBalk').style.width = '0'; $('mNu').textContent = $('mDuur').textContent = ''; return; }
+    var pos = Math.min(d.duur, (d.positie || 0) + (d.speelt && d.tijdstip ? Date.now() - d.tijdstip : 0));
+    $('mBalk').style.width = (100 * pos / d.duur).toFixed(2) + '%';
+    $('mNu').textContent = mmss(pos);
+    $('mDuur').textContent = mmss(d.duur);
+  }
+  setInterval(function () { if (media.actief) { voortgang(); toonMuziek(); } }, 1000);
   [].forEach.call(document.querySelectorAll('[data-media]'), function (b) {
     b.addEventListener('click', function () { N.media(b.dataset.media); });
   });
@@ -384,6 +434,15 @@
   if (!inst.ingelogd) setTimeout(function () { $('instKnop').click(); }, 600);
 
   // ---------- Voorbeeld in een gewone browser (zonder de app) ----------
+  function demoHoes() {
+    var c = document.createElement('canvas'); c.width = c.height = 300;
+    var x = c.getContext('2d'), g = x.createLinearGradient(0, 0, 300, 300);
+    g.addColorStop(0, '#ff4f8b'); g.addColorStop(.5, '#7b2ff7'); g.addColorStop(1, '#1b1464');
+    x.fillStyle = g; x.fillRect(0, 0, 300, 300);
+    x.fillStyle = 'rgba(255,214,102,.9)'; x.beginPath(); x.arc(200, 110, 60, 0, 7); x.fill();
+    x.fillStyle = '#12082e'; for (var i = 0; i < 9; i++) x.fillRect(i * 34, 300 - 40 - (i * 37 % 90), 30, 140);
+    return c.toDataURL();
+  }
   function demo() {
     var s = { ha_url: 'https://ha.timvanbergen.nl', pipeline: '', wekwoord: true, gevoeligheid: 'normaal', thema: 'donker',
       foto_interval: 30, stil: true, stil_van: '23:00', stil_tot: '08:00', stil_tot_weekend: '10:00', nacht: false, nacht_van: '23:00', nacht_tot: '07:00', weer: '', ingelogd: true, token: false, media_toegang: true };
@@ -397,7 +456,8 @@
       haard.bericht('wekwoord', { aan: true, model: 'hey_jarvis_v0.1' });
       haard.bericht('fotos', { aantal: 0, map: 'Pictures/Haard' });
       if (location.hash === '#muziek' || location.hash === '#assist') {
-        haard.bericht('media', { toegang: true, actief: true, speelt: true, titel: 'Een nummer', artiest: 'Een artiest', app: 'Spotify', hoes: 0 });
+        haard.bericht('media', { toegang: true, actief: true, speelt: true, titel: 'Midnight City', artiest: 'M83', app: 'Spotify', hoesUrl: demoHoes(),
+          positie: 83000, tijdstip: Date.now(), duur: 243000 });
       }
       if (location.hash === '#inst') document.getElementById('instKnop').click();
       if (location.hash === '#weer') setTimeout(function () { document.getElementById('weerKnop').click(); }, 100);

@@ -340,6 +340,10 @@ object Opdrachten {
             t = t.replace(Regex("\\b(weer|nog even|even|maar|eens) ", RegexOption.IGNORE_CASE), "")
         Regex("^(?:doe|zet) (.+?) aan,? en (?:doe|zet|maak) (?:hem|haar|die|het|deze) (?:op |in het |)([\\p{L}]+)$", RegexOption.IGNORE_CASE)
             .find(t)?.let { return "zet ${it.groupValues[1].replace(Regex(" (weer|nog even|even|maar)$"), "")} op ${it.groupValues[2]}" }
+        // Home Assistant kent geen "feller"/"zachter": vaste stappen die altijd hetzelfde doen
+        Regex("^(?:maak|zet|doe) (.+?) (?:wat |een beetje |iets |nog )?(feller|lichter|helderder|zachter|donkerder|minder fel|gedimd)$", RegexOption.IGNORE_CASE)
+            .find(t)?.let { return "zet ${it.groupValues[1]} op ${if (it.groupValues[2].lowercase() in setOf("feller", "lichter", "helderder")) 100 else 30} procent" }
+        Regex("^dim (.+)$", RegexOption.IGNORE_CASE).find(t)?.let { return "zet ${it.groupValues[1]} op 30 procent" }
         return t
     }
 

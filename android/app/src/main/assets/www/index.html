@@ -11,6 +11,7 @@
 <main id="rust">
   <div id="fotos"><div class="foto" id="fotoA"></div><div class="foto" id="fotoB"></div></div>
   <div id="lucht"><canvas id="doek"></canvas></div>
+  <div id="hoesLucht"><canvas id="hoesDoek" width="32" height="20"></canvas><i></i></div>
   <div id="waas"></div>
 
   <header id="boven">
@@ -25,15 +26,14 @@
       <span class="datum" id="datum"></span>
       <button id="weerKnop" hidden><span class="weer-icoon" id="weerIcoon"></span><span class="weer-temp" id="weerTemp"></span><span class="weer-zin" id="weerZin"></span></button>
     </div>
-    <div class="feest-regel" id="feestRegel" hidden></div>
   </section>
 
   <section id="muziek" hidden>
     <div class="hoes" id="hoes"></div>
-    <div class="muziek-tekst">
-      <div class="muziek-titel" id="mTitel"></div>
-      <div class="muziek-artiest" id="mArtiest"></div>
-    </div>
+    <div class="muziek-titel" id="mTitel"></div>
+    <div class="muziek-artiest" id="mArtiest"></div>
+    <div class="voortgang"><i id="mBalk"></i></div>
+    <div class="muziek-tijden"><span id="mNu"></span><span id="mDuur"></span></div>
     <div class="muziek-knoppen">
       <button class="icoon-knop" data-media="vorige" aria-label="Vorige"></button>
       <button class="icoon-knop groot" id="mSpeel" data-media="wissel" aria-label="Afspelen"></button>

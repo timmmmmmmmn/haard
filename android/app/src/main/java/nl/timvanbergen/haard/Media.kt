@@ -107,6 +107,13 @@ object Media {
             .put("album", md?.getString(MediaMetadata.METADATA_KEY_ALBUM) ?: "")
             .put("app", app)
             .put("hoes", if (hoes != null) versie else 0)
+        // Voor de voortgangsbalk: positie op een wandkloktijd, zodat de pagina zelf kan doortellen
+        c.playbackState?.let { ps ->
+            val verstreken = android.os.SystemClock.elapsedRealtime() - ps.lastPositionUpdateTime
+            val pos = if (st == PlaybackState.STATE_PLAYING) ps.position + (verstreken * ps.playbackSpeed).toLong() else ps.position
+            o.put("positie", pos.coerceAtLeast(0)).put("tijdstip", System.currentTimeMillis())
+        }
+        o.put("duur", md?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0)
         Bus.stuur("media", o)
     }
 
