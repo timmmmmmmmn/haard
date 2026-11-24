@@ -52,6 +52,12 @@ class Assistent(private val ctx: Context) {
     private var snelFaalde = false      // snelle route lukte niet: Whisper afwachten
     private var whisperTekst: String? = null
 
+    // Zelf horen dat je klaar bent met praten (sneller dan Home Assistant, dat ~0,8 s stilte afwacht):
+    // eerst duidelijk spraak, daarna ~0,56 s stilte ten opzichte van het stilste stukje van dit gesprek.
+    private var stilsteBlok = Float.MAX_VALUE
+    private var spraakBlokken = 0
+    private var stilteBlokken = 0
+
     /** Wekwoord gehoord of op de microfoon getikt. */
     fun start() = h.post { begin() }
 
@@ -96,6 +102,7 @@ class Assistent(private val ctx: Context) {
         val msg = pijplijn("stt", "stt").put("input", JSONObject().put("sample_rate", 16000))
         runId = HomeAssistant.Socket.stuur(msg) { ev -> h.post { if (mijn == beurt) bijLuisteren(ev) } }
         besloten = false; snelFaalde = false; whisperTekst = null
+        stilsteBlok = Float.MAX_VALUE; spraakBlokken = 0; stilteBlokken = 0
         snelHandler = -1; snelBuffer.clear(); snelRunId = -1
         SnellePijplijn.id?.let { snel ->
             val m = pijplijn("stt", "stt", snel).put("input", JSONObject().put("sample_rate", 16000))
@@ -125,12 +132,27 @@ class Assistent(private val ctx: Context) {
 
     private fun stuurGeluid(pcm: ByteArray) {
         if (fase != Fase.LUISTEREN || gestopt) return
+        eigenEinde(pcm)
         if (snelRunId >= 0) { if (snelHandler < 0) snelBuffer.add(pcm) else HomeAssistant.Socket.binair(byteArrayOf(snelHandler.toByte()) + pcm) }
         if (handlerId < 0) {
             buffer.add(pcm) // HA is er nog niet klaar voor; zo gaat het begin van je zin niet verloren
             return
         }
         HomeAssistant.Socket.binair(byteArrayOf(handlerId.toByte()) + pcm)
+    }
+
+    private fun eigenEinde(pcm: ByteArray) {
+        var som = 0.0
+        val n = pcm.size / 2
+        for (i in 0 until n) { val s = ((pcm[2 * i + 1].toInt() shl 8) or (pcm[2 * i].toInt() and 0xff)).toShort().toDouble(); som += s * s }
+        val rms = Math.sqrt(som / n).toFloat()
+        stilsteBlok = minOf(stilsteBlok, rms)
+        if (rms > maxOf(stilsteBlok * 4f, 400f)) { spraakBlokken++; stilteBlokken = 0 }
+        else if (rms < maxOf(stilsteBlok * 2.5f, 250f)) stilteBlokken++
+        else stilteBlokken = 0
+        // Minstens ~0,3 s gepraat, daarna 7 stille blokken van 80 ms
+        // (dit telt níet als bewijs dat er gesproken is: dat blijft Home Assistant bepalen, voor de spookcontrole)
+        if (spraakBlokken >= 4 && stilteBlokken >= 7) eindeGeluid()
     }
 
     private fun eindeGeluid() {
