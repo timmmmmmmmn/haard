@@ -39,6 +39,7 @@ class Assistent(private val ctx: Context) {
     private var focus: AudioFocusRequest? = null
     private var antwoord = StringBuilder()
     private var doorpraten = false
+    private var wachtOpApparaat: String? = null // "speel Frenna" → wacht op het antwoord op "Op welk apparaat?"
 
     /** Wekwoord gehoord of op de microfoon getikt. */
     fun start() = h.post { begin() }
@@ -147,7 +148,7 @@ class Assistent(private val ctx: Context) {
                 // de bekende "spook"-zinnen die Whisper verzint bij stilte of ruis.
                 when {
                     tekst.isEmpty() -> niksVerstaan()
-                    !spraakGehoord || Opdrachten.isSpook(tekst) -> stilWeg()
+                    !spraakGehoord || Opdrachten.isSpook(tekst, eenWoordMag = wachtOpApparaat != null) -> stilWeg()
                     else -> verwerk(tekst)
                 }
             }
@@ -176,6 +177,7 @@ class Assistent(private val ctx: Context) {
         status("denken", jij = tekst)
         val zelf = Opdrachten.herken(tekst)
         if (zelf != null) {
+            wachtOpApparaat = null
             when (zelf.first) {
                 "stop" -> Esphome.stopBel()
                 "volume" -> Media.zetVolume(ctx, zelf.second.toInt())
@@ -187,11 +189,41 @@ class Assistent(private val ctx: Context) {
             status("klaar", jij = tekst, antwoord = zelf.second.takeIf { zelf.first != "volume" } ?: "Volume op ${zelf.second}")
             return
         }
+        wachtOpApparaat?.let { zoek -> wachtOpApparaat = null; return speelMuziek(zoek, tekst, tekst) }
+        Opdrachten.speelVerzoek(tekst)?.let { (zoek, waar) -> return speelMuziek(zoek, waar, tekst) }
         val mijn = beurt
         val msg = pijplijn("intent", "tts").put("input", JSONObject().put("text", Opdrachten.versimpel(tekst)))
         runId = HomeAssistant.Socket.stuur(msg) { ev -> h.post { if (mijn == beurt) bijAntwoord(ev, tekst) } }
         // Het taalmodel draait op een CPU en mag even nadenken, maar niet eindeloos
         h.postDelayed({ if (mijn == beurt && fase == Fase.DENKEN) mislukt("Het antwoord duurde te lang.") }, 120_000)
+    }
+
+    /** "Speel Frenna (op de Sonos)": via Music Assistant; zonder apparaat vraagt Haard eerst waar. */
+    private fun speelMuziek(zoek: String, waar: String?, jij: String) {
+        if (Stilte.nu) return klaar("'s Nachts zet ik geen muziek aan.", jij)
+        val mijn = beurt
+        Thread {
+            val speler = waar?.let { Muziek.kies(it) }
+            if (speler != null) {
+                val fout = Muziek.speel(zoek, speler)
+                h.post { if (mijn == beurt) { if (fout == null) Geluid.klaar(); klaar(fout ?: "Ik speel $zoek op ${speler.naam}.", jij) } }
+                return@Thread
+            }
+            val namen = Muziek.spelers().map { it.naam }
+            if (namen.isEmpty()) { h.post { if (mijn == beurt) klaar("Ik vind geen speakers in Music Assistant.", jij) }; return@Thread }
+            if (waar != null) { // al gevraagd en niet herkend: niet blijven doorvragen
+                h.post { if (mijn == beurt) klaar("Dat apparaat ken ik niet. Kies uit: ${namen.joinToString(", ")}.", jij) }
+                return@Thread
+            }
+            val url = Muziek.stemUrl("Op welk apparaat?")
+            h.post {
+                if (mijn != beurt) return@post
+                wachtOpApparaat = zoek
+                doorpraten = true
+                antwoord = StringBuilder("Op welk apparaat? " + namen.take(4).joinToString(", ") + (if (namen.size > 4) " …" else ""))
+                if (url == null) naSpreken(jij) else spreek(Instellingen.haUrl + url, jij)
+            }
+        }.start()
     }
 
     private fun bijAntwoord(m: JSONObject, jij: String) {
@@ -272,6 +304,7 @@ class Assistent(private val ctx: Context) {
     }
 
     private fun klaar(antwoordTekst: String?, jij: String? = null) {
+        wachtOpApparaat = null
         val was = fase
         fase = Fase.RUST
         beurt++ // late berichten van deze vraag tellen niet meer
@@ -321,12 +354,12 @@ object Opdrachten {
     )
 
     /** True als de "zin" vrijwel zeker niet van iemand komt: dan doet Haard niets. */
-    fun isSpook(zin: String): Boolean {
+    fun isSpook(zin: String, eenWoordMag: Boolean = false): Boolean {
         val t = zin.lowercase().trim()
         if (SPOOK.any { t.contains(it) }) return true
         val woorden = t.replace(Regex("[^\\p{L}0-9 ]"), " ").trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
         // Eén los woord is alleen goed als het een bekend commando is ("pauze", "volgende", "stop")
-        return woorden.isEmpty() || (woorden.size == 1 && herken(t) == null)
+        return woorden.isEmpty() || (woorden.size == 1 && !eenWoordMag && herken(t) == null)
     }
 
     /**
@@ -347,6 +380,16 @@ object Opdrachten {
             .find(t)?.let { return "zet ${it.groupValues[1]} op ${if (it.groupValues[2].lowercase() in setOf("feller", "lichter", "helderder")) 100 else 30} procent" }
         Regex("^dim (.+)$", RegexOption.IGNORE_CASE).find(t)?.let { return "zet ${it.groupValues[1]} op 30 procent" }
         return t
+    }
+
+    /** "Speel Frenna", "speel het album Ye op de Sonos" → (wat, waar). Niet "speel verder": dat doet [herken]. */
+    fun speelVerzoek(zin: String): Pair<String, String?>? {
+        val t = zin.trim().trimEnd('.', '!', '?').replace(Regex("\\s+"), " ")
+        val m = Regex("^(?:speel|draai) (?:eens |even |maar )?(?:wat |iets )?(?:van )?(?:muziek van |nummers van |het nummer |het liedje |het album |de playlist |de afspeellijst |nummer |liedje |album |playlist |afspeellijst )?(.+?)(?: af)?(?: op (?:de |het )?(.+?))?$",
+            RegexOption.IGNORE_CASE).find(t) ?: return null
+        val wat = m.groupValues[1].trim()
+        if (wat.isEmpty() || Regex("^(muziek|verder|door)$", RegexOption.IGNORE_CASE).matches(wat)) return null
+        return wat to m.groupValues[2].trim().ifEmpty { null }
     }
 
     fun herken(zin: String): Pair<String, String>? {
