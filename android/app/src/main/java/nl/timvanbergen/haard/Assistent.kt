@@ -400,7 +400,8 @@ object Opdrachten {
     /** "Speel Frenna", "speel het album Ye op de Sonos" → (wat, waar). Niet "speel verder": dat doet [herken]. */
     fun speelVerzoek(zin: String): Pair<String, String?>? {
         val t = zin.trim().trimEnd('.', '!', '?').replace(Regex("\\s+"), " ")
-        val m = Regex("^(?:speel|draai) (?:eens |even |maar )?(?:wat |iets )?(?:van )?(?:muziek van |nummers van |het nummer |het liedje |het album |de playlist |de afspeellijst |nummer |liedje |album |playlist |afspeellijst )?(.+?)(?: af)?(?: op (?:de |het )?(.+?))?$",
+            .replace(Regex("^speelmuziek", RegexOption.IGNORE_CASE), "speel muziek") // Whisper plakt het soms aan elkaar
+        val m = Regex("^(?:speel|spel|speelt|draai) (?:eens |even |maar )?(?:wat |iets )?(?:van )?(?:muziek van |nummers van |het nummer |het liedje |het album |de playlist |de afspeellijst |nummer |liedje |album |playlist |afspeellijst )?(.+?)(?: af)?(?: op (?:de |het )?(.+?))?$",
             RegexOption.IGNORE_CASE).find(t) ?: return null
         val wat = m.groupValues[1].trim()
         if (wat.isEmpty() || Regex("^(muziek|verder|door)$", RegexOption.IGNORE_CASE).matches(wat)) return null

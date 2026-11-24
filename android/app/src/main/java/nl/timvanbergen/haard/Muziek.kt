@@ -52,11 +52,25 @@ object Muziek {
         val t = normaal(gezegd)
         if (Regex("\\b(hier|deze|dit|haard|tablet|jezelf|jou)\\b").containsMatchIn(t))
             lijst.firstOrNull { normaal(it.naam).contains("haard") }?.let { return it }
-        val woorden = t.split(" ").filter { it.length > 2 }.toSet()
+        val woorden = t.split(" ").filter { it.length > 2 }
+        // Een woord telt ook als het er een letter naast zit ("zonos" = "Sonos")
+        fun lijkt(a: String, b: String) = a == b || (a.length >= 4 && b.length >= 4 && afstand(a, b) <= if (a.length >= 7) 2 else 1)
+        fun treffers(s: Speler) = normaal(s.naam).split(" ").count { n -> woorden.any { lijkt(it, n) } }
         return lijst.maxByOrNull { s ->
             val n = normaal(s.naam)
-            if (n == t) 100 else n.split(" ").count { it in woorden } * 10 - n.length / 10
-        }?.takeIf { s -> normaal(s.naam).split(" ").any { it in woorden } || normaal(s.naam) == t }
+            if (n == t) 100 else treffers(s) * 10 - n.length / 10
+        }?.takeIf { s -> treffers(s) > 0 || normaal(s.naam) == t }
+    }
+
+    /** Hoeveel letters je moet veranderen om van a naar b te komen (Levenshtein). */
+    private fun afstand(a: String, b: String): Int {
+        var vorige = IntArray(b.length + 1) { it }
+        for (i in 1..a.length) {
+            val nu = IntArray(b.length + 1); nu[0] = i
+            for (j in 1..b.length) nu[j] = minOf(vorige[j] + 1, nu[j - 1] + 1, vorige[j - 1] + if (a[i - 1] == b[j - 1]) 0 else 1)
+            vorige = nu
+        }
+        return vorige[b.length]
     }
 
     private fun normaal(s: String) = s.lowercase().replace(Regex("[^a-z0-9 ]"), " ")

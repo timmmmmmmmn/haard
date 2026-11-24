@@ -52,7 +52,7 @@ services:
     volumes: ["./data/whisper:/data"]
     command: >-
       --model ${WHISPER_MODEL:-small-int8} --language nl --beam-size 1
-      --initial-prompt "Zet de lamp op wit. Zet mijn lamp op rood, blauw, groen, geel of paars. Doe de lamp in Tims kamer aan of uit. Maak de lamp feller. Wat voor weer wordt het morgen?"
+      --initial-prompt "Zet de lamp op wit. Zet mijn lamp op rood, blauw, groen, geel of paars. Doe de lamp in Tims kamer aan of uit. Maak de lamp feller. Wat voor weer wordt het morgen? Speel muziek van Frenna op de Sonos Roam. Wat staat er morgen op mijn agenda?"
 
   piper:
     image: rhasspy/wyoming-piper:latest
