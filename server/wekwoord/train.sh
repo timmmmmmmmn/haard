@@ -31,7 +31,7 @@ $PIP -e ./openwakeword --no-deps
 $PIP onnxruntime tqdm scipy scikit-learn pyyaml numpy==1.26.4 \
   mutagen==1.47.0 torchinfo==1.8.0 torchmetrics==1.2.0 speechbrain==0.5.14 \
   audiomentations==0.33.0 torch-audiomentations==0.11.0 acoustics==0.2.6 \
-  pronouncing==0.2.0 datasets==2.14.6 pyarrow==14.0.2 deep-phonemizer==0.0.19 soundfile
+  pronouncing==0.2.0 datasets==2.14.6 pyarrow==14.0.2 deep-phonemizer==0.0.19 soundfile onnx==1.15.0
 
 MODELS=openwakeword/openwakeword/resources/models; mkdir -p $MODELS
 for f in embedding_model.onnx melspectrogram.onnx embedding_model.tflite melspectrogram.tflite; do
@@ -96,8 +96,11 @@ PY
 
 stap "Voorbeelden maken, mengen en trainen"
 T=openwakeword/openwakeword/train.py
-python $T --training_config hey_fire.yml --generate_clips
-python $T --training_config hey_fire.yml --augment_clips
+# Voorbeelden en kenmerken kosten uren: niet opnieuw als ze er al zijn
+if [ ! -f hey_fire/hey_fire/negative_features_test.npy ]; then
+  python $T --training_config hey_fire.yml --generate_clips
+  python $T --training_config hey_fire.yml --augment_clips
+fi
 python $T --training_config hey_fire.yml --train_model || true  # de tflite-omzetting aan het eind mag falen
 
 cp hey_fire/hey_fire.onnx ../uit/hey_fire.onnx

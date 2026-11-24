@@ -7,7 +7,13 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.os.Bundle
+import kotlin.math.abs
+import kotlin.math.log10
 import android.provider.Settings
 import android.view.View
 import android.view.WindowManager
@@ -114,14 +120,42 @@ class MainActivity : ComponentActivity() {
         if (hasFocus) verbergBalken()
     }
 
+    // ---------- Helderheid volgt het licht in de kamer (de Fire heeft een lichtsensor) ----------
+    private var vasteHelderheid: Float? = null
+    private var helderheidDoel = 0.5f
+    private var helderheidNu = -1f
+    private val lichtSensor = object : SensorEventListener {
+        // Donkere kamer ≈ 0–5 lux → heel zacht; lamp aan ≈ 100 lux → tweederde; daglicht → vol
+        override fun onSensorChanged(e: SensorEvent) { helderheidDoel = (0.04f + 0.32f * log10(e.values[0] + 1f)).coerceIn(0.04f, 1f) }
+        override fun onAccuracyChanged(s: Sensor?, a: Int) {}
+    }
+    /** Rustig meebewegen (geen geflikker als er even iemand voor de sensor langs loopt). */
+    private val volgLicht = object : Runnable {
+        override fun run() {
+            web.removeCallbacks(this)
+            if (vasteHelderheid != null || !inFront) return
+            val n = if (helderheidNu < 0) helderheidDoel else helderheidNu + (helderheidDoel - helderheidNu) * 0.08f
+            if (abs(n - helderheidNu) > 0.004f) { helderheidNu = n; zetHelderheid(n) }
+            web.postDelayed(this, 250)
+        }
+    }
+    private fun zetHelderheid(w: Float) {
+        window.attributes = window.attributes.apply { screenBrightness = w }
+    }
+
     override fun onResume() {
         super.onResume()
+        getSystemService(SensorManager::class.java)?.let { sm ->
+            sm.getDefaultSensor(Sensor.TYPE_LIGHT)?.let { sm.registerListener(lichtSensor, it, SensorManager.SENSOR_DELAY_NORMAL) }
+        }
+        web.post(volgLicht)
         inFront = true
         Updater.resume(this)
         Media.start(this)
     }
 
     override fun onPause() {
+        getSystemService(SensorManager::class.java)?.unregisterListener(lichtSensor)
         inFront = false
         super.onPause()
     }
@@ -285,11 +319,10 @@ class MainActivity : ComponentActivity() {
             Thread { Fotos.ververs(); stuurFotos() }.start()
         }
 
-        /** Nachtstand: het scherm zo donker als het kan, overdag weer de normale helderheid. */
+        /** Nachtstand: het scherm zo donker als het kan; anders (-1) volgt het het licht in de kamer. */
         @JavascriptInterface fun helderheid(waarde: Float) = runOnUiThread {
-            window.attributes = window.attributes.apply {
-                screenBrightness = if (waarde < 0) WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE else waarde.coerceIn(0.01f, 1f)
-            }
+            vasteHelderheid = if (waarde < 0) null else waarde.coerceIn(0.01f, 1f)
+            vasteHelderheid?.let { zetHelderheid(it) } ?: run { helderheidNu = -1f; volgLicht.run() }
         }
 
         @JavascriptInterface fun update() = runOnUiThread { Updater.check(this@MainActivity, manual = true) }
