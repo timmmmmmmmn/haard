@@ -185,6 +185,8 @@ class MainActivity : ComponentActivity() {
                     Fotos.jpeg(n, breed)?.let { afbeelding(it) } ?: leeg()
                 }
                 pad.startsWith("/__hoes") -> Media.hoes?.let { afbeelding(it) } ?: leeg()
+                // Plaatjes uit Home Assistant via de app: dan zijn ze van dezelfde herkomst (kleuren uit de hoes halen mag)
+                pad.startsWith("/__ha/") -> HomeAssistant.plaatje(request.url.toString().substringAfter("/__ha"))?.let { afbeelding(it) } ?: leeg()
                 pad == "/" || pad.isEmpty() -> Bundel.serve(this@MainActivity, "index.html", null)
                 else -> Bundel.serve(this@MainActivity, pad, request.requestHeaders["Range"]) ?: leeg()
             }

@@ -107,6 +107,15 @@ object HomeAssistant {
         }
     }
 
+    /** Een plaatje uit Home Assistant (zoals de hoes van Spotify), met inlog; null als het niet lukt. */
+    fun plaatje(pad: String): ByteArray? {
+        val token = token() ?: return null
+        return runCatching {
+            http.newCall(Request.Builder().url(Instellingen.haUrl + pad).header("Authorization", "Bearer $token").build())
+                .execute().use { if (it.isSuccessful) it.body?.bytes() else null }
+        }.getOrNull()
+    }
+
     private fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
 
     /**

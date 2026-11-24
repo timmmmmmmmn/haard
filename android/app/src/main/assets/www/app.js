@@ -235,11 +235,43 @@
 
   // Nu speelt: hoes als wazige achtergrond, klok links, voortgang die zelf doortelt.
   // Na tien minuten pauze komt de gewone lucht terug.
-  var hoesUrl = '', pauzeSinds = 0;
-  berichten.media = function (d) {
+  var hoesUrl = '', pauzeSinds = 0, lokaal = {}, haSpeler = {}, bron = 'lokaal';
+  // Wat er op de Fire zelf speelt gaat voor; anders wat Spotify via Home Assistant speelt (telefoon, speaker …)
+  berichten.media = function (d) { lokaal = d; kiesMuziek(); };
+  function kiesMuziek() {
+    var d = lokaal.actief ? lokaal : haSpeler.actief ? haSpeler : lokaal;
+    bron = d === haSpeler ? 'ha' : 'lokaal';
+    toonMedia(d);
+  }
+
+  /** Spotify uit Home Assistant volgen: elke paar seconden de stand van de speler. */
+  var spotifyId = null;
+  function volgSpotify() {
+    if (!inst.ingelogd || html.classList.contains('nacht')) return;
+    var id = spotifyId ? Promise.resolve(spotifyId) : vraag('GET', '/api/states').then(function (states) {
+      var s = states.filter(function (s) { return /^media_player\.spotify/.test(s.entity_id); })[0];
+      return (spotifyId = s ? s.entity_id : '');
+    });
+    id.then(function (eid) {
+      if (!eid) return;
+      return vraag('GET', '/api/states/' + eid).then(function (s) {
+        var a = s.attributes || {}, aan = s.state === 'playing' || s.state === 'paused';
+        var pos = a.media_position != null ? a.media_position * 1000 : 0;
+        var sinds = a.media_position_updated_at ? Date.parse(a.media_position_updated_at) : Date.now();
+        haSpeler = { toegang: lokaal.toegang, actief: aan, speelt: s.state === 'playing', titel: a.media_title, artiest: a.media_artist,
+          app: a.source || 'Spotify', hoesUrl: a.entity_picture ? '/__ha' + a.entity_picture : '',
+          positie: pos, tijdstip: sinds, duur: (a.media_duration || 0) * 1000 };
+        kiesMuziek();
+      });
+    }).catch(function () {});
+  }
+  volgSpotify();
+  setInterval(volgSpotify, 3000);
+
+  function toonMedia(d) {
     media = d;
-    $('mediaSub').textContent = d.toegang ? 'Toegang gegeven' : 'Nodig om te zien wat er speelt';
-    $('mediaKnop').textContent = d.toegang ? 'Instellingen' : 'Toegang geven';
+    $('mediaSub').textContent = lokaal.toegang ? 'Toegang gegeven' : 'Nodig om te zien wat er speelt';
+    $('mediaKnop').textContent = lokaal.toegang ? 'Instellingen' : 'Toegang geven';
     if (d.actief && !d.speelt) pauzeSinds = pauzeSinds || Date.now(); else pauzeSinds = 0;
     toonMuziek();
     if (!d.actief) return;
@@ -274,7 +306,8 @@
     if (!img) { x.fillStyle = '#2a2230'; x.fillRect(0, 0, c.width, c.height); html.style.removeProperty('--muziek'); return; }
     // Eerst de kleur kiezen uit een scherpe versie, dan de waas: vervaagd en iets voller van kleur
     x.filter = 'none'; x.drawImage(img, 0, 0, c.width, c.height);
-    var p = x.getImageData(0, 0, c.width, c.height).data, beste = -1, kleur = null;
+    var p, beste = -1, kleur = null;
+    try { p = x.getImageData(0, 0, c.width, c.height).data; } catch (e) { p = []; }
     for (var i = 0; i < p.length; i += 4) {
       var r = p[i], g = p[i + 1], b = p[i + 2], max = Math.max(r, g, b), min = Math.min(r, g, b);
       var score = (max - min) * (max > 60 ? 1 : 0.2) + max * 0.15; // verzadigd en niet te donker
@@ -297,8 +330,13 @@
     $('mDuur').textContent = mmss(d.duur);
   }
   setInterval(function () { if (media.actief) { voortgang(); toonMuziek(); } }, 1000);
+  var HA_DIENST = { wissel: 'media_play_pause', volgende: 'media_next_track', vorige: 'media_previous_track' };
   [].forEach.call(document.querySelectorAll('[data-media]'), function (b) {
-    b.addEventListener('click', function () { N.media(b.dataset.media); });
+    b.addEventListener('click', function () {
+      if (bron === 'ha' && spotifyId) {
+        vraag('POST', '/api/services/media_player/' + HA_DIENST[b.dataset.media], { entity_id: spotifyId }).then(function () { setTimeout(volgSpotify, 400); });
+      } else N.media(b.dataset.media);
+    });
   });
 
   // ---------- Assistent ----------
