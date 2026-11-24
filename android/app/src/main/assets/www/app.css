@@ -42,8 +42,10 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 
 /* ---------- Rustscherm ---------- */
 @font-face { font-family: "Outfit"; src: url("fonts/Outfit.ttf") format("truetype"); font-weight: 100 900; }
+/* Figtree (OFL): het startscherm, in de geest van de Nest Hub-klok */
+@font-face { font-family: "Figtree"; src: url("fonts/Figtree.ttf") format("truetype"); font-weight: 300 900; }
 
-#rust { position: fixed; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; font-family: Outfit, Roboto, sans-serif; }
+#rust { position: fixed; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; font-family: Figtree, Outfit, Roboto, sans-serif; }
 #fotos { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg); }
 .foto { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-size: cover; background-position: center;
   opacity: 0; transition: opacity 1.6s ease; }
@@ -86,9 +88,9 @@ html.met-fotos #rust { --tekst: #fff; --zacht: rgba(255,255,255,.8); color: #fff
    zodat hij op elke lucht leesbaar blijft. */
 #klok { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-54%); text-align: center; color: #fff;
   text-shadow: 0 4px 30px rgba(0,0,0,.28), 0 1px 3px rgba(0,0,0,.18); }
-.tijd { font-size: 300px; line-height: .86; font-weight: 200; letter-spacing: -10px; font-variant-numeric: tabular-nums;
+.tijd { font-size: 290px; line-height: .86; font-weight: 300; letter-spacing: -6px; font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum"; white-space: nowrap; }
-.tijd .dp { display: inline-block; margin: 0 4px; transform: translateY(-14px); animation: adem 4s ease-in-out infinite; }
+.tijd .dp { display: inline-block; margin: 0 2px; transform: translateY(-16px); animation: adem 4s ease-in-out infinite; }
 @keyframes adem { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
 .onder { display: flex; justify-content: center; align-items: center; margin-top: 26px; font-size: 32px; font-weight: 300; }
 .datum b { font-weight: 500; }

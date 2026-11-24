@@ -214,6 +214,8 @@
 
   window.Lucht = {
     nu: nu,
+    /** 'dag', 'schemer' of 'nacht' (een benadering van zon op en onder) */
+    deel: function () { return dagdeel(nu()); },
     /** Het weer van Home Assistant (bijvoorbeeld "rainy"); in de browser wint ?weer=. */
     weer: function (w) { if (zoek.weer || !w || w === staat.weer) return; staat.weer = w; verf(); opbouwen(); },
     controleer: zetLoop

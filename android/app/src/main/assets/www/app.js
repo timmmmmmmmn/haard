@@ -157,7 +157,9 @@
   function toonWeer(st, fc) {
     verwachting = fc || [];
     $('weerKnop').hidden = false;
-    $('weerIcoon').innerHTML = WEER[st.state] || WEER.cloudy;
+    // Buienradar zegt ook in het donker "zonnig": dan een maan
+    var icoon = st.state === 'sunny' && Lucht.deel() === 'nacht' ? 'clear-night' : st.state;
+    $('weerIcoon').innerHTML = WEER[icoon] || WEER.cloudy;
     Lucht.weer(st.state);
     $('weerTemp').textContent = graden(st.attributes.temperature);
     var zin = WEER_TEKST[st.state] || '';
