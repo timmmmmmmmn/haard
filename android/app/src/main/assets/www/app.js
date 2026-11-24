@@ -306,7 +306,8 @@
     toonMuziek();
     if (!d.actief) return;
     $('mTitel').textContent = d.titel || 'Onbekend nummer';
-    $('mArtiest').textContent = d.artiest || d.app || '';
+    // Via Home Assistant (telefoon, speaker): ook laten zien waar het speelt
+    $('mArtiest').textContent = bron === 'ha' && d.app ? [d.artiest, d.app].filter(Boolean).join(' · ') : (d.artiest || d.app || '');
     $('mSpeel').innerHTML = d.speelt ? ICONEN.pauze : ICONEN.speel;
     var url = d.hoesUrl || (d.hoes ? '/__hoes?v=' + d.hoes : '');
     if (url !== hoesUrl) { hoesUrl = url; laadHoes(url); }

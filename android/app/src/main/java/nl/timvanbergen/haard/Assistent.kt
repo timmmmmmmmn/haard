@@ -40,6 +40,7 @@ class Assistent(private val ctx: Context) {
     private var antwoord = StringBuilder()
     private var doorpraten = false
     private var wachtOpApparaat: String? = null // "speel Frenna" → wacht op het antwoord op "Op welk apparaat?"
+    private var opnieuwUitspreken = false // het antwoord van HA bevatte Engelse toestanden ("off")
 
     /** Wekwoord gehoord of op de microfoon getikt. */
     fun start() = h.post { begin() }
@@ -75,6 +76,7 @@ class Assistent(private val ctx: Context) {
         gestopt = false
         antwoord = StringBuilder()
         doorpraten = false
+        opnieuwUitspreken = false
         // Een gesprek loopt door als je binnen vijf minuten weer iets vraagt ("en morgen?")
         if (System.currentTimeMillis() - gesprekTijd > 5 * 60_000) gesprek = null
         vraagFocus()
@@ -192,6 +194,7 @@ class Assistent(private val ctx: Context) {
         wachtOpApparaat?.let { zoek -> wachtOpApparaat = null; return speelMuziek(zoek, tekst, tekst) }
         Opdrachten.speelVerzoek(tekst)?.let { (zoek, waar) -> return speelMuziek(zoek, waar, tekst) }
         Agenda.herken(tekst)?.let { v -> return zeg(tekst) { Agenda.antwoord(v) } }
+        Weer.herken(tekst)?.let { v -> return zeg(tekst) { Weer.antwoord(v) } }
         val mijn = beurt
         val msg = pijplijn("intent", "tts").put("input", JSONObject().put("text", Opdrachten.versimpel(tekst)))
         runId = HomeAssistant.Socket.stuur(msg) { ev -> h.post { if (mijn == beurt) bijAntwoord(ev, tekst) } }
@@ -262,7 +265,9 @@ class Assistent(private val ctx: Context) {
                 out.optString("conversation_id").takeIf { it.isNotEmpty() }?.let { gesprek = it }
                 gesprekTijd = System.currentTimeMillis()
                 doorpraten = out.optBoolean("continue_conversation", false)
-                val tekst = out.optJSONObject("response")?.optJSONObject("speech")?.optJSONObject("plain")?.optString("speech").orEmpty()
+                val ruw = out.optJSONObject("response")?.optJSONObject("speech")?.optJSONObject("plain")?.optString("speech").orEmpty()
+                val tekst = Opdrachten.vertaalStaat(ruw)
+                opnieuwUitspreken = tekst != ruw
                 antwoord = StringBuilder(tekst)
                 status("denken", jij = jij, antwoord = tekst)
             }
@@ -270,7 +275,8 @@ class Assistent(private val ctx: Context) {
                 val url = data.optJSONObject("tts_output")?.optString("url").orEmpty()
                 HomeAssistant.Socket.vergeet(runId)
                 runId = -1
-                if (url.isEmpty()) klaar(antwoord.toString(), jij) else spreek(if (url.startsWith("/")) Instellingen.haUrl + url else url, jij)
+                if (opnieuwUitspreken) zeg(jij) { antwoord.toString() } // HA las het Engels voor: met de vertaling opnieuw
+                else if (url.isEmpty()) klaar(antwoord.toString(), jij) else spreek(if (url.startsWith("/")) Instellingen.haUrl + url else url, jij)
             }
             "run-end" -> if (fase == Fase.DENKEN) klaar(antwoord.toString(), jij)
             "error" -> mislukt(data.optString("message"))
@@ -395,6 +401,15 @@ object Opdrachten {
             .find(t)?.let { return "zet ${it.groupValues[1]} op ${if (it.groupValues[2].lowercase() in setOf("feller", "lichter", "helderder")) 100 else 30} procent" }
         Regex("^dim (.+)$", RegexOption.IGNORE_CASE).find(t)?.let { return "zet ${it.groupValues[1]} op 30 procent" }
         return t
+    }
+
+    /** Home Assistant zegt soms de Engelse toestand ("Nee, die is off"): naar gewoon Nederlands. */
+    fun vertaalStaat(zin: String): String {
+        val woorden = mapOf("off" to "uit", "on" to "aan", "unavailable" to "niet bereikbaar", "unknown" to "onbekend",
+            "closed" to "dicht", "not_home" to "niet thuis", "home" to "thuis", "playing" to "aan het spelen", "paused" to "gepauzeerd",
+            "idle" to "niet actief", "standby" to "stand-by", "heat" to "verwarmen", "cool" to "koelen", "locked" to "op slot", "unlocked" to "open")
+        return Regex("\\b(not_home|unavailable|unknown|closed|playing|paused|standby|unlocked|locked|idle|heat|cool|home|off|on)\\b")
+            .replace(zin) { woorden[it.value] ?: it.value }
     }
 
     /** "Speel Frenna", "speel het album Ye op de Sonos" → (wat, waar). Niet "speel verder": dat doet [herken]. */
