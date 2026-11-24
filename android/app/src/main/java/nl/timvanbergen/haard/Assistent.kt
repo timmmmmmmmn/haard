@@ -186,7 +186,7 @@ class Assistent(private val ctx: Context) {
             return
         }
         val mijn = beurt
-        val msg = pijplijn("intent", "tts").put("input", JSONObject().put("text", tekst))
+        val msg = pijplijn("intent", "tts").put("input", JSONObject().put("text", Opdrachten.versimpel(tekst)))
         runId = HomeAssistant.Socket.stuur(msg) { ev -> h.post { if (mijn == beurt) bijAntwoord(ev, tekst) } }
         // Het taalmodel draait op een CPU en mag even nadenken, maar niet eindeloos
         h.postDelayed({ if (mijn == beurt && fase == Fase.DENKEN) mislukt("Het antwoord duurde te lang.") }, 120_000)
@@ -325,6 +325,22 @@ object Opdrachten {
         val woorden = t.replace(Regex("[^\\p{L}0-9 ]"), " ").trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
         // Eén los woord is alleen goed als het een bekend commando is ("pauze", "volgende", "stop")
         return woorden.isEmpty() || (woorden.size == 1 && herken(t) == null)
+    }
+
+    /**
+     * Herschrijft zinnen die de ingebouwde zinnen van Home Assistant net niet snappen, zodat het daar
+     * snel en zeker gebeurt in plaats van bij het taalmodel: "zet mijn lamp weer aan" → "zet mijn lamp aan",
+     * "doe mijn lamp aan en zet hem op rood" → "zet mijn lamp op rood" (een kleur kiezen zet de lamp ook aan).
+     */
+    fun versimpel(zin: String): String {
+        var t = zin.trim().trimEnd('.', '!', '?').replace(Regex("\\s+"), " ")
+            .replace(Regex(",? ?(alsjeblieft|alstublieft|graag)$", RegexOption.IGNORE_CASE), "")
+        // Alleen bij opdrachten ("... weer aan"), want "weer" is ook het weer
+        if (Regex("^(doe|zet|maak) .+ (aan|uit)$", RegexOption.IGNORE_CASE).matches(t))
+            t = t.replace(Regex("\\b(weer|nog even|even|maar|eens) ", RegexOption.IGNORE_CASE), "")
+        Regex("^(?:doe|zet) (.+?) aan,? en (?:doe|zet|maak) (?:hem|haar|die|het|deze) (?:op |in het |)([\\p{L}]+)$", RegexOption.IGNORE_CASE)
+            .find(t)?.let { return "zet ${it.groupValues[1].replace(Regex(" (weer|nog even|even|maar)$"), "")} op ${it.groupValues[2]}" }
+        return t
     }
 
     fun herken(zin: String): Pair<String, String>? {

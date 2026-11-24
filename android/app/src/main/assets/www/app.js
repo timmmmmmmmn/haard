@@ -87,7 +87,7 @@
 
   var wasNacht = null;
   function tik() {
-    var d = new Date();
+    var d = Lucht.nu();
     $('uur').textContent = d.getHours();
     $('min').textContent = twee(d.getMinutes());
     $('datum').innerHTML = '<b>' + DAGEN[d.getDay()] + '</b> ' + d.getDate() + ' ' + MAANDEN[d.getMonth()];
@@ -156,6 +156,7 @@
     verwachting = fc || [];
     $('weerKnop').hidden = false;
     $('weerIcoon').innerHTML = WEER[st.state] || WEER.cloudy;
+    Lucht.weer(st.state);
     $('weerTemp').textContent = graden(st.attributes.temperature);
     var zin = WEER_TEKST[st.state] || '';
     var v = verwachting[0];
@@ -410,7 +411,7 @@
         setTimeout(function () {
           var r = pad.indexOf('get_forecasts') > -1 ? { service_response: { 'weather.forecast_home': { forecast: fc } } }
             : pad === '/api/states' ? [{ entity_id: 'weather.forecast_home', attributes: { friendly_name: 'Thuis' } }]
-            : { state: 'partlycloudy', attributes: { temperature: 7.4, friendly_name: 'Thuis' } };
+            : { state: (location.search.match(/weer=([\w-]+)/) || [])[1] || 'partlycloudy', attributes: { temperature: 7.4, friendly_name: 'Thuis' } };
           haard.antwoord(id, 200, JSON.stringify(r));
         }, 30);
       },

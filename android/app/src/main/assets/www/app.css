@@ -49,19 +49,26 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   opacity: 0; transition: opacity 1.6s ease; }
 .foto.zicht { opacity: 1; }
 
-/* Gloed van een haardvuur: twee zachte vlekken die heel langzaam bewegen (alleen overdag) */
-#gloed { position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; pointer-events: none; }
-#gloed i { position: absolute; border-radius: 50%; will-change: transform; }
-#gloed .g1 { width: 900px; height: 900px; right: -320px; bottom: -520px;
-  background: radial-gradient(closest-side, rgba(255, 106, 40, .42), rgba(255, 106, 40, .12) 55%, rgba(255, 106, 40, 0));
-  animation: zweef1 38s ease-in-out infinite alternate; }
-#gloed .g2 { width: 620px; height: 620px; right: 120px; bottom: -420px;
-  background: radial-gradient(closest-side, rgba(255, 190, 90, .30), rgba(255, 190, 90, 0));
-  animation: zweef2 27s ease-in-out infinite alternate; }
-@keyframes zweef1 { from { transform: translate(0, 0) scale(1); } to { transform: translate(-90px, -40px) scale(1.12); } }
-@keyframes zweef2 { from { transform: translate(0, 0) scale(1); } to { transform: translate(110px, -60px) scale(.9); } }
-html[data-theme="licht"] #gloed .g1 { background: radial-gradient(closest-side, rgba(255, 140, 60, .35), rgba(255, 140, 60, 0)); }
-html.met-fotos #gloed { display: none; }
+/* De lucht: het weer van nu, de tijd van de dag en het moment van het jaar (zie lucht.js) */
+#lucht { position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; pointer-events: none; transition: background 3s; }
+#doek { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+/* Zon, maan en mist als zachte gloed, achter de wolken */
+#lucht::before { content: ""; position: absolute; width: 520px; height: 520px; right: -140px; top: -200px; border-radius: 50%; opacity: 0; }
+#lucht.klaar::before { transition: opacity 3s; }
+#lucht.deel-dag.weer-helder::before, #lucht.deel-dag.weer-half::before { opacity: 1;
+  background: radial-gradient(closest-side, rgba(255,250,225,.95), rgba(255,236,170,.45) 22%, rgba(255,226,150,.12) 55%, rgba(255,226,150,0)); }
+#lucht.deel-schemer.weer-helder::before, #lucht.deel-schemer.weer-half::before { opacity: 1; top: auto; bottom: -300px; right: 80px;
+  background: radial-gradient(closest-side, rgba(255,214,150,.9), rgba(255,150,90,.35) 35%, rgba(255,120,80,0)); }
+#lucht.deel-nacht.weer-helder::before, #lucht.deel-nacht.weer-half::before { opacity: 1; width: 76px; height: 76px; right: 130px; top: 28px;
+  background: radial-gradient(circle at 38% 38%, #fffbe8, #e9e2c8 60%, #cfc6a8); box-shadow: 0 0 60px 18px rgba(255,248,220,.18); }
+#lucht.weer-mist::after { content: ""; position: absolute; left: -10%; right: -10%; top: 30%; bottom: -10%;
+  background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(235,238,242,.55) 40%, rgba(235,238,242,.75)); animation: mist 30s ease-in-out infinite alternate; }
+#lucht.deel-nacht.weer-mist::after { background: linear-gradient(to bottom, rgba(60,66,76,0), rgba(60,66,76,.5) 50%, rgba(60,66,76,.7)); }
+@keyframes mist { from { transform: translateX(-4%); } to { transform: translateX(4%); } }
+/* Halloween: een grote oranje maan waar de vleermuizen voor langs vliegen */
+#lucht.feest-halloween::before { opacity: 1 !important; width: 120px; height: 120px; right: 120px; top: 14px; bottom: auto;
+  background: radial-gradient(circle at 40% 40%, #ffd28a, #f39a3c 60%, #d9702a); box-shadow: 0 0 90px 30px rgba(255,150,60,.25); }
+html.met-fotos #lucht { display: none; }
 
 #waas { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; opacity: 0; transition: opacity 1s;
   background: linear-gradient(to right, rgba(0,0,0,.65) 0%, rgba(0,0,0,.25) 50%, rgba(0,0,0,.1) 100%),
@@ -78,22 +85,24 @@ html.met-fotos #rust { --tekst: #fff; --zacht: rgba(255,255,255,.8); color: #fff
 .punt { width: 10px; height: 10px; border-radius: 50%; background: var(--gevaar); margin-right: 10px; }
 .punt.aan { display: none; }
 
-/* De klok: groot, dun, de dubbele punt gloeit zacht in de vuurkleur */
-#klok { position: absolute; left: 64px; top: 50%; transform: translateY(-58%); }
-.tijd { font-size: 210px; line-height: .9; font-weight: 200; letter-spacing: -8px; font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum"; color: var(--tekst); white-space: nowrap; }
-.tijd .dp { display: inline-block; margin: 0 2px; color: var(--accent); animation: adem 4s ease-in-out infinite; transform: translateY(-10px); }
-@keyframes adem { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
-.datum { font-size: 30px; font-weight: 300; margin: 18px 0 0 10px; color: var(--zacht); letter-spacing: .2px; }
-.datum b { font-weight: 500; color: var(--tekst); }
-
-/* Weer rechtsboven, rustig en groot */
-#weerKnop { position: absolute; right: 56px; top: 50%; transform: translateY(-80%); display: flex; flex-direction: column; align-items: flex-end;
-  text-align: right; color: var(--tekst); font-family: Outfit, Roboto, sans-serif; padding: 12px; border-radius: 22px; }
-#weerKnop:active { background: rgba(127,127,127,.14); }
-.weer-icoon svg { width: 84px; height: 84px; display: block; }
-.weer-temp { font-size: 64px; font-weight: 200; line-height: 1; margin-top: 4px; }
-.weer-zin { font-size: 19px; font-weight: 300; color: var(--zacht); margin-top: 8px; max-width: 280px; }
+/* De klok: groot en in het midden, de datum, het weer en het feest eronder. Wit met een zachte schaduw,
+   zodat hij op elke lucht leesbaar blijft. */
+#klok { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-54%); text-align: center; color: #fff;
+  text-shadow: 0 4px 30px rgba(0,0,0,.28), 0 1px 3px rgba(0,0,0,.18); }
+.tijd { font-size: 300px; line-height: .86; font-weight: 200; letter-spacing: -10px; font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum"; white-space: nowrap; }
+.tijd .dp { display: inline-block; margin: 0 4px; transform: translateY(-14px); animation: adem 4s ease-in-out infinite; }
+@keyframes adem { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+.onder { display: flex; justify-content: center; align-items: center; margin-top: 26px; font-size: 32px; font-weight: 300; }
+.datum b { font-weight: 500; }
+#weerKnop { display: inline-flex; align-items: center; color: inherit; font-family: inherit; font-size: inherit; font-weight: 300;
+  padding: 4px 14px; margin-left: 18px; border-radius: 30px; background: rgba(255,255,255,.16); text-shadow: inherit; }
+#weerKnop:active { background: rgba(255,255,255,.3); }
+.weer-icoon svg { width: 38px; height: 38px; display: block; margin-right: 8px; filter: drop-shadow(0 1px 4px rgba(0,0,0,.2)); }
+.weer-zin { display: none; }
+.feest-regel { margin-top: 14px; font-size: 24px; font-weight: 400; letter-spacing: .3px; opacity: .92; }
+html.lucht-licht #klok { color: #23303e; text-shadow: 0 2px 20px rgba(255,255,255,.4); }
+html.lucht-licht #weerKnop { background: rgba(0,0,0,.08); }
 
 /* Muziekkaart: alleen zichtbaar als er iets speelt of gepauzeerd is */
 #muziek { position: absolute; right: 28px; bottom: 28px; width: 340px; display: flex; flex-wrap: wrap; align-items: center;
@@ -111,13 +120,16 @@ html[data-theme="licht"] #muziek { background: var(--vlak); border-color: var(--
 .muziek-knoppen .icoon-knop.groot { width: 56px; height: 56px; background: var(--accent); color: var(--op-accent); }
 .muziek-knoppen .icoon-knop.groot svg { width: 22px; height: 22px; }
 /* Met muziek schuift het weer omhoog */
-html.met-muziek #weerKnop { top: 28px; transform: none; }
+html.met-muziek #klok { text-align: left; left: 56px; transform: translateY(-62%); }
+html.met-muziek .tijd { font-size: 220px; letter-spacing: -8px; }
+html.met-muziek .onder { justify-content: flex-start; font-size: 28px; margin-left: 8px; }
+html.met-muziek .feest-regel { margin-left: 8px; }
 html.met-muziek #boven { top: auto; bottom: 200px; }
 
 /* Nachtstand: alleen een kleine, donkerrode klok — niets beweegt, niets licht op */
-html.nacht #fotos, html.nacht #gloed, html.nacht #waas, html.nacht #boven, html.nacht #muziek, html.nacht #weerKnop { display: none !important; }
+html.nacht #fotos, html.nacht #lucht, html.nacht #waas, html.nacht #boven, html.nacht #muziek, html.nacht #weerKnop, html.nacht .feest-regel { display: none !important; }
 html.nacht body, html.nacht #rust { background: #000; }
-html.nacht #klok { left: 0; right: 0; text-align: center; }
+html.nacht #klok { left: 0; right: 0; text-align: center; text-shadow: none; transform: translateY(-54%); }
 html.nacht .tijd { font-size: 150px; letter-spacing: -5px; color: #6e2a12; }
 html.nacht .tijd .dp { animation: none; color: #6e2a12; }
 html.nacht .datum { font-size: 22px; color: #4a1d0d; margin-left: 0; }
@@ -220,12 +232,12 @@ select { max-width: 260px; }
 
 /* Staand of klein scherm */
 @media (max-width: 700px), (orientation: portrait) {
-  .tijd { font-size: 96px; letter-spacing: -2px; }
-  #klok { left: 24px; bottom: auto; top: 90px; }
+  .tijd { font-size: 150px; letter-spacing: -4px; }
+  .onder { font-size: 22px; flex-wrap: wrap; }
   #muziek { left: 16px; right: 16px; width: auto; bottom: 16px; }
   .dagen { flex-wrap: wrap; }
   .dag { flex: 0 0 33%; }
 }
 @media (max-height: 520px) {
-  .tijd { font-size: 110px; }
+  .tijd { font-size: 170px; }
 }

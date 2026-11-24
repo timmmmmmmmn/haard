@@ -10,7 +10,7 @@
 
 <main id="rust">
   <div id="fotos"><div class="foto" id="fotoA"></div><div class="foto" id="fotoB"></div></div>
-  <div id="gloed"><i class="g1"></i><i class="g2"></i></div>
+  <div id="lucht"><canvas id="doek"></canvas></div>
   <div id="waas"></div>
 
   <header id="boven">
@@ -21,14 +21,12 @@
 
   <section id="klok">
     <div class="tijd"><span id="uur">--</span><span class="dp">:</span><span id="min">--</span></div>
-    <div class="datum" id="datum"></div>
+    <div class="onder">
+      <span class="datum" id="datum"></span>
+      <button id="weerKnop" hidden><span class="weer-icoon" id="weerIcoon"></span><span class="weer-temp" id="weerTemp"></span><span class="weer-zin" id="weerZin"></span></button>
+    </div>
+    <div class="feest-regel" id="feestRegel" hidden></div>
   </section>
-
-  <button id="weerKnop" hidden>
-    <span class="weer-icoon" id="weerIcoon"></span>
-    <span class="weer-temp" id="weerTemp"></span>
-    <span class="weer-zin" id="weerZin"></span>
-  </button>
 
   <section id="muziek" hidden>
     <div class="hoes" id="hoes"></div>
@@ -130,6 +128,7 @@
 <div id="toast" hidden></div>
 
 <script src="iconen.js"></script>
+<script src="lucht.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
