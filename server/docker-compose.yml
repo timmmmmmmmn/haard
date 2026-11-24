@@ -16,7 +16,7 @@ services:
     volumes: ["./data/ollama:/root/.ollama"]
     environment:
       OLLAMA_KEEP_ALIVE: "-1"          # model blijft in het geheugen: geen laadtijd per vraag
-      OLLAMA_NUM_PARALLEL: "1"         # één vraag tegelijk is op de CPU het snelst
+      OLLAMA_NUM_PARALLEL: "2"         # twee plekken: Home Assistant houdt zo zijn lange vaste prompt in de cache, naast Open WebUI
       OLLAMA_MAX_LOADED_MODELS: "2"
       OLLAMA_FLASH_ATTENTION: "1"
       OLLAMA_KV_CACHE_TYPE: "q8_0"     # halve geheugen voor de context
