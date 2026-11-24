@@ -22,13 +22,21 @@ Alles draait thuis, zonder Google of Amazon.
 | `server/` | `docker-compose.yml` + `install.sh` voor de XPS: Ollama, Open WebUI, Whisper, Piper, Cloudflare Tunnel. |
 | `server/wekwoord/` | `train.sh` traint het wekwoord "Hey Fire" / "OK Fire" (openWakeWord). |
 
+## Wat Haard kan
+
+- **Klok in de geest van de Nest Hub** (Figtree) op een lucht die het weer van nu laat zien: zon, wolken, regen, sneeuw, mist, onweer, dag/schemer/nacht met maan en sterren. Met kerst lichtjes en sneeuw, van 27 december t/m 1 januari vuurwerk.
+- **Muziek**: wat er speelt (op de tablet zelf of via Spotify in Home Assistant) met de hoes als achtergrond; "speel Frenna" vraagt op welk apparaat en start het via Music Assistant.
+- **Agenda** (eigen CalDAV-agenda via HA): volgende afspraak onder de klok, "wat staat er morgen op mijn agenda?", "zet morgen om half vier tandarts in mijn agenda".
+- **Apparaat in Home Assistant** (ESPHome-API): spraakassistent met kamer, timers, omroepen, mediaspeler en een schakelaar "Microfoon uit".
+- **Stille tijd** (23–8, weekend tot 10): geen enkel geluid, Niet storen op totale stilte, een heel donkere rode klok; timers en omroepen alleen op het scherm.
+- **Zuinig**: het wekwoord rekent niet als het stil is, de lucht tekent alleen zo vaak als nodig, de helderheid volgt de lichtsensor.
+
 ## Hoe een vraag loopt
 
-1. De tablet hoort zelf het wekwoord (openWakeWord, ~20 ms rekenen per 80 ms geluid). Pas daarna gaat er geluid naar Home Assistant.
-2. Home Assistant zet het geluid met Whisper om naar tekst en hoort zelf wanneer je klaar bent met praten.
-3. Muziek en volume regelt de tablet meteen zelf, zoals "volgende", "pauze", "harder" en "volume op 4".
-4. De rest gaat naar Home Assistant. Gewone commando's ("doe de lamp in Tims kamer aan") handelt HA zelf af, binnen een seconde. Echte vragen gaan naar het taalmodel op de XPS. Het antwoord verschijnt woord voor woord en Piper leest het voor.
-5. Stelt de assistent een wedervraag, dan luistert de tablet meteen weer, zonder wekwoord.
+1. De tablet hoort zelf het wekwoord "Hey Fire" / "Oké Fire" (openWakeWord, eigen model). Pas daarna gaat er geluid naar Home Assistant.
+2. Home Assistant zet het geluid met Whisper om naar tekst en hoort zelf wanneer je klaar bent met praten. Zinnen die Whisper bij stilte verzint worden genegeerd.
+3. Muziek, volume, agenda en "speel …" regelt de tablet zelf.
+4. De rest gaat naar Home Assistant, met het apparaat erbij (dus de kamer). Commando's ("doe het licht uit", "zet mijn lamp op rood", "zet een timer van 10 minuten") handelt HA zelf af, binnen een seconde. Echte vragen gaan naar het taalmodel op de XPS, dat de echte meetwaarden meekrijgt maar zelf niets bedient. Piper leest het antwoord voor.
 
 ## De tablet klaarmaken (Fire HD 8, 2020)
 
