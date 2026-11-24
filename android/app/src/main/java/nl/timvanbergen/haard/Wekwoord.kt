@@ -129,8 +129,8 @@ class Wekwoord(ctx: Context, model: File?) : AutoCloseable {
         private const val OVERLAP = 480
         private const val MEL_VENSTER = 76
 
-        // Tot "Hey Fire" getraind is (server/wekwoord/train.sh) luistert Haard naar "Hey Jarvis".
-        const val STANDAARD = "hey_jarvis_v0.1.onnx"
+        // "Hey Fire" / "Oké Fire", zelf getraind met server/wekwoord/train.sh
+        const val STANDAARD = "hey_fire.onnx"
 
         /** Een zelf getraind model in de app-map (bijv. hey_fire.onnx) gaat voor het ingebouwde. */
         fun eigenModel(ctx: Context): File? =

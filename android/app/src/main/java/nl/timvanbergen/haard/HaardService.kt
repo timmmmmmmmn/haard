@@ -160,12 +160,13 @@ class HaardService : Service() {
                     piekTijd = nu
                     if (meten) Bus.stuur("meter", JSONObject().put("kans", kans.toDouble()))
                 }
-                // Het wekwoord moet een paar blokken achter elkaar duidelijk gehoord worden ('s nachts strenger),
-                // zodat een los geluidje nooit genoeg is
+                // Het wekwoord telt bij twee blokken achter elkaar boven de drempel, of één heel duidelijke piek
+                // ("Hey Fire" geeft korte pieken). 's Nachts allebei strenger, zodat een los geluidje nooit genoeg is.
                 val stil = Stilte.nu
-                val drempel = if (stil) maxOf(Instellingen.drempel, 0.75f) else Instellingen.drempel
+                val drempel = if (stil) maxOf(Instellingen.drempel, 0.7f) else Instellingen.drempel
+                val piek = if (stil) 0.9f else maxOf(Instellingen.drempel + 0.2f, 0.7f)
                 reeks = if (kans >= drempel) reeks + 1 else 0
-                if (reeks >= (if (stil) 3 else 2) && nu > rustTot &&
+                if ((reeks >= 2 || kans >= piek) && nu > rustTot &&
                     (a.fase == Assistent.Fase.RUST || a.fase == Assistent.Fase.SPREKEN)) {
                     reeks = 0
                     rustTot = nu + 2000
