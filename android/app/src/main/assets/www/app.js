@@ -214,6 +214,32 @@
 
   // ---------- Muziek ----------
   var media = {};
+  // ---------- Agenda: de volgende afspraak onder de klok (alleen binnen anderhalve dag) ----------
+  var agendaId = null;
+  function laadAgenda() {
+    if (!inst.ingelogd) return;
+    var id = agendaId !== null ? Promise.resolve(agendaId) : vraag('GET', '/api/states').then(function (states) {
+      var ids = states.map(function (s) { return s.entity_id; }).filter(function (e) { return e.indexOf('calendar.') === 0; });
+      return (agendaId = ids.indexOf('calendar.persoonlijk') > -1 ? 'calendar.persoonlijk' : (ids[0] || ''));
+    });
+    id.then(function (eid) {
+      if (!eid) return;
+      var nu = new Date(), tot = new Date(nu.getTime() + 36 * 3600e3);
+      return vraag('GET', '/api/calendars/' + eid + '?start=' + encodeURIComponent(nu.toISOString()) + '&end=' + encodeURIComponent(tot.toISOString()))
+        .then(function (lijst) {
+          var a = (lijst || []).filter(function (e) { return e.start && e.start.dateTime && new Date(e.start.dateTime) > nu; })[0];
+          var r = $('agendaRegel');
+          if (!a) { r.hidden = true; return; }
+          var d = new Date(a.start.dateTime), morgen = d.getDate() !== nu.getDate();
+          r.innerHTML = '<b>' + (morgen ? 'Morgen ' : '') + d.getHours() + ':' + twee(d.getMinutes()) + '</b> · ' +
+            String(a.summary || 'Afspraak').replace(/</g, '&lt;');
+          r.hidden = false;
+        });
+    }).catch(function () {});
+  }
+  laadAgenda();
+  setInterval(laadAgenda, 5 * 60000);
+
   // ---------- Timers (gezet via Home Assistant: "zet een timer van tien minuten") ----------
   var timers = [];
   var TIMER_ICOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg>';
@@ -527,8 +553,9 @@
       versie: function () { return 'voorbeeld'; },
       ha: function (id, m, pad) {
         setTimeout(function () {
-          var r = pad.indexOf('get_forecasts') > -1 ? { service_response: { 'weather.forecast_home': { forecast: fc } } }
-            : pad === '/api/states' ? [{ entity_id: 'weather.forecast_home', attributes: { friendly_name: 'Thuis' } }]
+          var r = pad.indexOf('/api/calendars/') === 0 ? [{ summary: 'Tandarts', start: { dateTime: new Date(Date.now() + 5 * 3600e3).toISOString() } }]
+            : pad.indexOf('get_forecasts') > -1 ? { service_response: { 'weather.forecast_home': { forecast: fc } } }
+            : pad === '/api/states' ? [{ entity_id: 'weather.forecast_home', attributes: { friendly_name: 'Thuis' } }, { entity_id: 'calendar.persoonlijk', attributes: {} }]
             : { state: (location.search.match(/weer=([\w-]+)/) || [])[1] || 'partlycloudy', attributes: { temperature: 7.4, friendly_name: 'Thuis' } };
           haard.antwoord(id, 200, JSON.stringify(r));
         }, 30);

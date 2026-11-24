@@ -191,11 +191,26 @@ class Assistent(private val ctx: Context) {
         }
         wachtOpApparaat?.let { zoek -> wachtOpApparaat = null; return speelMuziek(zoek, tekst, tekst) }
         Opdrachten.speelVerzoek(tekst)?.let { (zoek, waar) -> return speelMuziek(zoek, waar, tekst) }
+        Agenda.herken(tekst)?.let { v -> return zeg(tekst) { Agenda.antwoord(v) } }
         val mijn = beurt
         val msg = pijplijn("intent", "tts").put("input", JSONObject().put("text", Opdrachten.versimpel(tekst)))
         runId = HomeAssistant.Socket.stuur(msg) { ev -> h.post { if (mijn == beurt) bijAntwoord(ev, tekst) } }
         // Het taalmodel draait op een CPU en mag even nadenken, maar niet eindeloos
         h.postDelayed({ if (mijn == beurt && fase == Fase.DENKEN) mislukt("Het antwoord duurde te lang.") }, 120_000)
+    }
+
+    /** Een antwoord dat Haard zelf maakt (zoals uit de agenda) uitspreken met de stem van de assistent. */
+    private fun zeg(jij: String, maak: () -> String) {
+        val mijn = beurt
+        Thread {
+            val tekst = runCatching(maak).getOrElse { "Er ging iets mis." }
+            val url = if (Stilte.nu) null else Muziek.stemUrl(tekst)
+            h.post {
+                if (mijn != beurt) return@post
+                antwoord = StringBuilder(tekst)
+                if (url == null) klaar(tekst, jij) else spreek(Instellingen.haUrl + url, jij)
+            }
+        }.start()
     }
 
     /** "Speel Frenna (op de Sonos)": via Music Assistant; zonder apparaat vraagt Haard eerst waar. */

@@ -97,6 +97,10 @@ html.met-fotos #rust { --tekst: #fff; --zacht: rgba(255,255,255,.8); color: #fff
 #weerKnop:active { background: rgba(255,255,255,.3); }
 .weer-icoon svg { width: 38px; height: 38px; display: block; margin-right: 8px; filter: drop-shadow(0 1px 4px rgba(0,0,0,.2)); }
 .weer-zin { display: none; }
+.agenda-regel { margin-top: 16px; font-size: 24px; font-weight: 300; opacity: .9; }
+.agenda-regel b { font-weight: 500; }
+html.met-muziek .agenda-regel { margin-left: 8px; }
+html.nacht .agenda-regel { display: none !important; }
 html.lucht-licht #klok { color: #23303e; text-shadow: 0 2px 20px rgba(255,255,255,.4); }
 html.lucht-licht #weerKnop { background: rgba(0,0,0,.08); }
 
