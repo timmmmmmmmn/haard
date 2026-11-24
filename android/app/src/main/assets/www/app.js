@@ -80,8 +80,10 @@
   function minuten(hhmm) { var p = (hhmm || '0:0').split(':'); return (+p[0]) * 60 + (+p[1]); }
 
   function isNacht(d) {
+    // De nachtstand loopt gelijk met de stille tijd (doordeweeks en in het weekend)
     if (!inst.nacht || Date.now() < wakkerTot) return false;
-    var nu = d.getHours() * 60 + d.getMinutes(), van = minuten(inst.nacht_van), tot = minuten(inst.nacht_tot);
+    var weekend = d.getDay() === 0 || d.getDay() === 6;
+    var nu = d.getHours() * 60 + d.getMinutes(), van = minuten(inst.stil_van), tot = minuten(weekend ? inst.stil_tot_weekend : inst.stil_tot);
     return van <= tot ? (nu >= van && nu < tot) : (nu >= van || nu < tot);
   }
 
@@ -413,8 +415,6 @@
     $('stilTot').value = inst.stil_tot;
     $('stilTotWeekend').value = inst.stil_tot_weekend;
     $('nachtAan').checked = inst.nacht;
-    $('nachtVan').value = inst.nacht_van;
-    $('nachtTot').value = inst.nacht_tot;
     $('versie').textContent = 'Versie ' + N.versie();
     if (inst.ingelogd && haStatus.verbonden) laadKeuzes();
   }
@@ -472,8 +472,6 @@
   $('stilTot').addEventListener('change', function () { zet('stil_tot', this.value); });
   $('stilTotWeekend').addEventListener('change', function () { zet('stil_tot_weekend', this.value); });
   $('nachtAan').addEventListener('change', function () { zet('nacht', this.checked); wasNacht = null; tik(); });
-  $('nachtVan').addEventListener('change', function () { zet('nacht_van', this.value); wasNacht = null; tik(); });
-  $('nachtTot').addEventListener('change', function () { zet('nacht_tot', this.value); wasNacht = null; tik(); });
   $('testKnop').addEventListener('click', function () { sluitVel($('instVel')); N.luister(); });
   $('mediaKnop').addEventListener('click', function () { N.mediaToegang(); });
   $('updateKnop').addEventListener('click', function () { N.update(); });
