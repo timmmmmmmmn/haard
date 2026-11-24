@@ -34,9 +34,9 @@ Alles draait thuis, zonder Google of Amazon.
 ## Hoe een vraag loopt
 
 1. De tablet hoort zelf het wekwoord "Hey Fire" / "Oké Fire" (openWakeWord, eigen model). Pas daarna gaat er geluid naar Home Assistant.
-2. Home Assistant zet het geluid met Whisper om naar tekst en hoort zelf wanneer je klaar bent met praten. Zinnen die Whisper bij stilte verzint worden genegeerd.
+2. Het geluid gaat tegelijk naar **Speech-to-Phrase** (pijplijn "Haard snel": vaste commando's, 0,1–0,5 s) en naar **Whisper** (alles, ~2 s). Herkent Speech-to-Phrase een commando, dan voert Home Assistant het meteen uit en klinkt er een belletje; anders gaat Haard verder met Whisper. De tablet hoort zelf wanneer je klaar bent met praten (~0,5 s stilte). Zinnen die Whisper bij stilte verzint worden genegeerd.
 3. Muziek, volume, agenda en "speel …" regelt de tablet zelf.
-4. De rest gaat naar Home Assistant, met het apparaat erbij (dus de kamer). Commando's ("doe het licht uit", "zet mijn lamp op rood", "zet een timer van 10 minuten") handelt HA zelf af, binnen een seconde. Echte vragen gaan naar het taalmodel op de XPS, dat de echte meetwaarden meekrijgt maar zelf niets bedient. Piper leest het antwoord voor.
+4. De rest gaat naar Home Assistant, met het apparaat erbij (dus de kamer). Commando's ("doe het licht uit", "zet mijn lamp op rood", "zet een timer van 10 minuten") handelt HA zelf af, binnen een seconde. Echte vragen gaan naar het taalmodel op de XPS, dat de echte meetwaarden meekrijgt maar zelf niets bedient. Piper (stem Ronnie) leest het antwoord voor. Op het scherm zie je wat Haard doet: "Verstaan…", "In je agenda kijken…", "De AI denkt na · 3 s".
 
 ## De tablet klaarmaken (Fire HD 8, 2020)
 
