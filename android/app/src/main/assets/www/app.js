@@ -374,6 +374,8 @@
   var verbergTimer = null;
 
   berichten.assist = function (d) {
+    // Opmaak die het taalmodel soms toch gebruikt (*nadruk*, lijstjes) niet laten zien
+    if (d.antwoord) d.antwoord = d.antwoord.replace(/[*_#`]+/g, '').replace(/\s+/g, ' ').trim();
     clearTimeout(verbergTimer);
     if (d.fase === 'weg') { verbergAssist(); return; } // niets echts gehoord: stil verdwijnen
     var a = $('assist');

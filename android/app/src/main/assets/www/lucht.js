@@ -174,7 +174,7 @@
   var vorige = 0, laatst = 0, loopt = false, tussen = 125;
   function kiesTempo() {
     var s = staat.feest;
-    tussen = deeltjes.length || s === 'vuurwerk' || s === 'kerst' ? 40 : wolken.length || sterren.length ? 125 : 1000;
+    tussen = deeltjes.length || s === 'vuurwerk' || s === 'kerst' ? 40 : wolken.length ? 125 : sterren.length ? 250 : 1000;
   }
   var keten = 0; // elke start krijgt een nummer: een oude lus stopt vanzelf
   function lus(mijn) {
