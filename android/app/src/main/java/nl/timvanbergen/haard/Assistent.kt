@@ -42,6 +42,16 @@ class Assistent(private val ctx: Context) {
     private var wachtOpApparaat: String? = null // "speel Frenna" → wacht op het antwoord op "Op welk apparaat?"
     private var opnieuwUitspreken = false // het antwoord van HA bevatte Engelse toestanden ("off")
 
+    // Snelle route: hetzelfde geluid gaat ook naar Speech-to-Phrase (pijplijn "Haard snel"), dat vaste
+    // commando's in een fractie van een seconde herkent. Wie het eerst iets bruikbaars heeft, wint;
+    // lukt de snelle route niet, dan gaat het verder met wat Whisper hoorde.
+    private var snelRunId = -1
+    private var snelHandler = -1
+    private val snelBuffer = ArrayList<ByteArray>()
+    private var besloten = false        // er is al gekozen welke tekst we gebruiken
+    private var snelFaalde = false      // snelle route lukte niet: Whisper afwachten
+    private var whisperTekst: String? = null
+
     /** Wekwoord gehoord of op de microfoon getikt. */
     fun start() = h.post { begin() }
 
@@ -85,6 +95,12 @@ class Assistent(private val ctx: Context) {
 
         val msg = pijplijn("stt", "stt").put("input", JSONObject().put("sample_rate", 16000))
         runId = HomeAssistant.Socket.stuur(msg) { ev -> h.post { if (mijn == beurt) bijLuisteren(ev) } }
+        besloten = false; snelFaalde = false; whisperTekst = null
+        snelHandler = -1; snelBuffer.clear(); snelRunId = -1
+        SnellePijplijn.id?.let { snel ->
+            val m = pijplijn("stt", "stt", snel).put("input", JSONObject().put("sample_rate", 16000))
+            snelRunId = HomeAssistant.Socket.stuur(m) { ev -> h.post { if (mijn == beurt) bijSnel(ev) } }
+        }
 
         // Geen antwoord van Home Assistant: dan niet blijven hangen
         h.postDelayed({
@@ -98,9 +114,9 @@ class Assistent(private val ctx: Context) {
         h.postDelayed({ if (mijn == beurt && fase == Fase.LUISTEREN) eindeGeluid() }, 15_000)
     }
 
-    private fun pijplijn(van: String, tot: String): JSONObject {
+    private fun pijplijn(van: String, tot: String, welke: String? = null): JSONObject {
         val m = JSONObject().put("type", "assist_pipeline/run").put("start_stage", van).put("end_stage", tot)
-        Instellingen.pipeline.takeIf { it.isNotEmpty() }?.let { m.put("pipeline", it) }
+        (welke ?: Instellingen.pipeline.takeIf { it.isNotEmpty() })?.let { m.put("pipeline", it) }
         gesprek?.let { m.put("conversation_id", it) }
         // Het apparaat in Home Assistant: dan weet hij de kamer ("doe het licht aan") en kunnen timers
         Esphome.apparaat?.let { m.put("device_id", it) }
@@ -109,6 +125,7 @@ class Assistent(private val ctx: Context) {
 
     private fun stuurGeluid(pcm: ByteArray) {
         if (fase != Fase.LUISTEREN || gestopt) return
+        if (snelRunId >= 0) { if (snelHandler < 0) snelBuffer.add(pcm) else HomeAssistant.Socket.binair(byteArrayOf(snelHandler.toByte()) + pcm) }
         if (handlerId < 0) {
             buffer.add(pcm) // HA is er nog niet klaar voor; zo gaat het begin van je zin niet verloren
             return
@@ -120,9 +137,10 @@ class Assistent(private val ctx: Context) {
         if (gestopt) return
         gestopt = true
         if (handlerId >= 0) HomeAssistant.Socket.binair(byteArrayOf(handlerId.toByte()))
+        if (snelHandler >= 0) HomeAssistant.Socket.binair(byteArrayOf(snelHandler.toByte()))
         if (fase == Fase.LUISTEREN) {
             fase = Fase.DENKEN
-            status("denken")
+            status("denken", stap = "verstaan")
         }
     }
 
@@ -149,15 +167,100 @@ class Assistent(private val ctx: Context) {
                 // Veiligheid: alleen iets doen als Home Assistant echt spraak hoorde, en nooit op
                 // de bekende "spook"-zinnen die Whisper verzint bij stilte of ruis.
                 when {
+                    besloten && !snelFaalde -> whisperTekst = tekst // de snelle route is al bezig; bewaren voor als die faalt
+                    besloten && snelFaalde -> { whisperTekst = tekst; naWhisper() }
                     tekst.isEmpty() -> niksVerstaan()
                     !spraakGehoord || Opdrachten.isSpook(tekst, eenWoordMag = wachtOpApparaat != null) -> stilWeg()
-                    else -> verwerk(tekst)
+                    else -> { besloten = true; stopSnel(); verwerk(tekst) }
                 }
             }
             "error" -> {
                 if (data.optString("code") == "stt-no-text-recognized") niksVerstaan()
                 else mislukt(data.optString("message"))
             }
+        }
+    }
+
+    private fun stopSnel() {
+        if (snelRunId >= 0) HomeAssistant.Socket.vergeet(snelRunId)
+        snelRunId = -1
+    }
+
+    private fun bijSnel(m: JSONObject) {
+        val ev = m.optJSONObject("event") ?: return
+        val data = ev.optJSONObject("data") ?: JSONObject()
+        when (ev.optString("type")) {
+            "run-start" -> {
+                snelHandler = data.optJSONObject("runner_data")?.optInt("stt_binary_handler_id", -1) ?: -1
+                for (b in snelBuffer) HomeAssistant.Socket.binair(byteArrayOf(snelHandler.toByte()) + b)
+                snelBuffer.clear()
+            }
+            "stt-vad-start" -> spraakGehoord = true
+            "stt-vad-end" -> eindeGeluid()
+            "stt-end" -> {
+                val tekst = data.optJSONObject("stt_output")?.optString("text")?.trim().orEmpty()
+                stopSnel()
+                // Alleen een herkend commando telt; leeg = geen bekend commando, dan wacht Haard op Whisper
+                if (besloten || tekst.isEmpty() || !spraakGehoord || Opdrachten.isSpook(tekst, eenWoordMag = true)) return
+                if (wachtOpApparaat != null) return // antwoord op "op welk apparaat?": dat moet Whisper verstaan
+                besloten = true
+                eindeGeluid()
+                snelUitvoeren(tekst)
+            }
+            "error" -> stopSnel()
+        }
+    }
+
+    /** Een commando van Speech-to-Phrase: de tablet zelf of Home Assistant zonder taalmodel. */
+    private fun snelUitvoeren(tekst: String) {
+        status("denken", jij = tekst, stap = "uitvoeren")
+        if (Opdrachten.herken(tekst) != null) {
+            if (runId >= 0) HomeAssistant.Socket.vergeet(runId)
+            runId = -1
+            verwerk(tekst)
+            return
+        }
+        val mijn = beurt
+        val snel = SnellePijplijn.id ?: return naWhisper()
+        val msg = pijplijn("intent", "intent", snel).put("input", JSONObject().put("text", tekst))
+        HomeAssistant.Socket.stuur(msg) { r -> h.post {
+            if (mijn != beurt) return@post
+            val ev = r.optJSONObject("event") ?: return@post
+            if (ev.optString("type") == "error") return@post naWhisper()
+            if (ev.optString("type") != "intent-end") return@post
+            val out = ev.optJSONObject("data")?.optJSONObject("intent_output") ?: return@post naWhisper()
+            val resp = out.optJSONObject("response") ?: JSONObject()
+            val soort = resp.optString("response_type")
+            val zin = Opdrachten.vertaalStaat(resp.optJSONObject("speech")?.optJSONObject("plain")?.optString("speech").orEmpty())
+            when (soort) {
+                // Gedaan (lamp, timer): meteen een belletje, geen voorgelezen "Aangezet"; Whisper is niet meer nodig
+                "action_done" -> {
+                    if (runId >= 0) HomeAssistant.Socket.vergeet(runId)
+                    runId = -1
+                    Geluid.klaar()
+                    klaar(zin.ifEmpty { "Gedaan" }, tekst)
+                }
+                // Een antwoord (hoe laat is het): voorlezen
+                "query_answer" -> {
+                    if (runId >= 0) HomeAssistant.Socket.vergeet(runId)
+                    runId = -1
+                    antwoord = StringBuilder(zin)
+                    zeg(tekst, "uitvoeren") { zin }
+                }
+                else -> naWhisper()
+            }
+        } }
+    }
+
+    /** De snelle route lukte niet: verder met de tekst van Whisper (nu of zodra die er is). */
+    private fun naWhisper() {
+        snelFaalde = true
+        val w = whisperTekst ?: run { status("denken", stap = "verstaan"); return }
+        whisperTekst = null
+        when {
+            w.isEmpty() -> niksVerstaan()
+            Opdrachten.isSpook(w, eenWoordMag = wachtOpApparaat != null) -> stilWeg()
+            else -> verwerk(w)
         }
     }
 
@@ -176,7 +279,7 @@ class Assistent(private val ctx: Context) {
 
     /** Eerst kijken of de tablet het zelf kan; anders door naar Home Assistant. */
     private fun verwerk(tekst: String) {
-        status("denken", jij = tekst)
+        status("denken", jij = tekst, stap = "uitvoeren")
         val zelf = Opdrachten.herken(tekst)
         if (zelf != null) {
             wachtOpApparaat = null
@@ -193,17 +296,20 @@ class Assistent(private val ctx: Context) {
         }
         wachtOpApparaat?.let { zoek -> wachtOpApparaat = null; return speelMuziek(zoek, tekst, tekst) }
         Opdrachten.speelVerzoek(tekst)?.let { (zoek, waar) -> return speelMuziek(zoek, waar, tekst) }
-        Agenda.herken(tekst)?.let { v -> return zeg(tekst) { Agenda.antwoord(v) } }
-        Weer.herken(tekst)?.let { v -> return zeg(tekst) { Weer.antwoord(v) } }
+        Agenda.herken(tekst)?.let { v -> return zeg(tekst, "agenda") { Agenda.antwoord(v) } }
+        Weer.herken(tekst)?.let { v -> return zeg(tekst, "weer") { Weer.antwoord(v) } }
         val mijn = beurt
         val msg = pijplijn("intent", "tts").put("input", JSONObject().put("text", Opdrachten.versimpel(tekst)))
         runId = HomeAssistant.Socket.stuur(msg) { ev -> h.post { if (mijn == beurt) bijAntwoord(ev, tekst) } }
+        // Home Assistant zelf antwoordt binnen een seconde; duurt het langer, dan denkt de AI na: laten zien
+        h.postDelayed({ if (mijn == beurt && fase == Fase.DENKEN && antwoord.isEmpty()) status("denken", jij = tekst, stap = "ai") }, 900)
         // Het taalmodel draait op een CPU en mag even nadenken, maar niet eindeloos
         h.postDelayed({ if (mijn == beurt && fase == Fase.DENKEN) mislukt("Het antwoord duurde te lang.") }, 120_000)
     }
 
     /** Een antwoord dat Haard zelf maakt (zoals uit de agenda) uitspreken met de stem van de assistent. */
-    private fun zeg(jij: String, maak: () -> String) {
+    private fun zeg(jij: String, stap: String = "zoeken", maak: () -> String) {
+        status("denken", jij = jij, stap = stap)
         val mijn = beurt
         Thread {
             val tekst = runCatching(maak).getOrElse { "Er ging iets mis." }
@@ -219,6 +325,7 @@ class Assistent(private val ctx: Context) {
     /** "Speel Frenna (op de Sonos)": via Music Assistant; zonder apparaat vraagt Haard eerst waar. */
     private fun speelMuziek(zoek: String, waar: String?, jij: String) {
         if (Stilte.nu) return klaar("'s Nachts zet ik geen muziek aan.", jij)
+        status("denken", jij = jij, stap = "muziek")
         val mijn = beurt
         Thread {
             val speler = waar?.let { Muziek.kies(it) }
@@ -257,7 +364,7 @@ class Assistent(private val ctx: Context) {
                 val stuk = data.optJSONObject("chat_log_delta")?.optString("content").orEmpty()
                 if (stuk.isNotEmpty()) {
                     antwoord.append(stuk)
-                    status("denken", jij = jij, antwoord = antwoord.toString())
+                    status("denken", jij = jij, antwoord = antwoord.toString(), stap = "ai")
                 }
             }
             "intent-end" -> {
@@ -267,6 +374,12 @@ class Assistent(private val ctx: Context) {
                 doorpraten = out.optBoolean("continue_conversation", false)
                 val ruw = out.optJSONObject("response")?.optJSONObject("speech")?.optJSONObject("plain")?.optString("speech").orEmpty()
                 val tekst = Opdrachten.vertaalStaat(ruw)
+                // Gedaan door Home Assistant zelf (lamp, timer): niet wachten op een voorgelezen "Aangezet"
+                if (data.optBoolean("processed_locally") && out.optJSONObject("response")?.optString("response_type") == "action_done" && !doorpraten) {
+                    Geluid.klaar()
+                    klaar(tekst.ifEmpty { "Gedaan" }, jij)
+                    return
+                }
                 opnieuwUitspreken = tekst != ruw
                 antwoord = StringBuilder(tekst)
                 status("denken", jij = jij, antwoord = tekst)
@@ -275,7 +388,7 @@ class Assistent(private val ctx: Context) {
                 val url = data.optJSONObject("tts_output")?.optString("url").orEmpty()
                 HomeAssistant.Socket.vergeet(runId)
                 runId = -1
-                if (opnieuwUitspreken) zeg(jij) { antwoord.toString() } // HA las het Engels voor: met de vertaling opnieuw
+                if (opnieuwUitspreken) zeg(jij, "uitvoeren") { antwoord.toString() } // HA las het Engels voor: met de vertaling opnieuw
                 else if (url.isEmpty()) klaar(antwoord.toString(), jij) else spreek(if (url.startsWith("/")) Instellingen.haUrl + url else url, jij)
             }
             "run-end" -> if (fase == Fase.DENKEN) klaar(antwoord.toString(), jij)
@@ -355,8 +468,9 @@ class Assistent(private val ctx: Context) {
         focus = null
     }
 
-    private fun status(fase: String, tekst: String? = null, jij: String? = null, antwoord: String? = null) {
+    private fun status(fase: String, tekst: String? = null, jij: String? = null, antwoord: String? = null, stap: String? = null) {
         val o = JSONObject().put("fase", fase)
+        stap?.let { o.put("stap", it) }
         jij?.let { o.put("jij", it) }
         (antwoord ?: tekst)?.let { o.put("antwoord", it) }
         Bus.stuur("assist", o)

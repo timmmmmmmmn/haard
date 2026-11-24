@@ -54,6 +54,27 @@ services:
       --model ${WHISPER_MODEL:-small-int8} --language nl --beam-size 1
       --initial-prompt "Zet de lamp op wit. Zet mijn lamp op rood, blauw, groen, geel of paars. Doe de lamp in Tims kamer aan of uit. Maak de lamp feller. Wat voor weer wordt het morgen? Speel muziek van Frenna op de Sonos Roam. Wat staat er morgen op mijn agenda?"
 
+  # Speech-to-Phrase: verstaat vaste commando's ("doe de lamp aan", timers, tijd) in een fractie van een seconde.
+  # De app stuurt het geluid tegelijk hierheen en naar Whisper; is dit een bekend commando, dan gaat het meteen.
+  speech-to-phrase:
+    image: rhasspy/wyoming-speech-to-phrase:latest
+    container_name: speech-to-phrase
+    restart: unless-stopped
+    depends_on: [ha-lijst]
+    ports: ["10301:10300"]
+    volumes: ["./data/stp/train:/train", "./data/stp/models:/models"]
+    command: >-
+      --uri tcp://0.0.0.0:10300 --train-dir /train --models-dir /models
+      --hass-websocket-uri ws://ha-lijst:8124/api/websocket --hass-token geen --retrain-on-start
+
+  # De lijst met lampen, kamers en taal voor Speech-to-Phrase (momentopname, zonder sleutels)
+  ha-lijst:
+    image: rhasspy/wyoming-speech-to-phrase:latest
+    container_name: ha-lijst
+    restart: unless-stopped
+    entrypoint: ["/usr/src/.venv/bin/python3", "/data/ha_lijst.py"]
+    volumes: ["./stp:/data:ro"]
+
   piper:
     image: rhasspy/wyoming-piper:latest
     container_name: piper

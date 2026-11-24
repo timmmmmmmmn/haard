@@ -42,6 +42,7 @@ class HaardService : Service() {
             acquire()
         }
         HomeAssistant.Socket.start()
+        SnellePijplijn.zoek()
         Esphome.start(this)
         start()
         stilteKlok.run()

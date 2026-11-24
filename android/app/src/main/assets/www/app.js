@@ -372,7 +372,20 @@
 
   // ---------- Assistent ----------
   var LABELS = { luisteren: 'Ik luister…', denken: 'Even denken…', spreken: '', klaar: '', fout: '' };
-  var verbergTimer = null;
+  var STAPPEN = { verstaan: 'Verstaan…', uitvoeren: 'Bezig…', ai: 'De AI denkt na', zoeken: 'Even opzoeken…',
+    agenda: 'In je agenda kijken…', weer: 'Weerbericht ophalen…', muziek: 'Muziek zoeken…' };
+  var verbergTimer = null, stapNu = null, stapSinds = 0, faseNu = '';
+  function toonLabel(fase) {
+    faseNu = fase;
+    var l = fase === 'denken' && STAPPEN[stapNu] ? STAPPEN[stapNu] : (LABELS[fase] || '');
+    if (fase === 'denken' && stapNu === 'ai') {
+      var s = Math.floor((Date.now() - stapSinds) / 1000);
+      if (s >= 2) l += ' · ' + s + ' s';
+    }
+    $('assistLabel').textContent = l;
+    $('assistLabel').hidden = !l;
+  }
+  setInterval(function () { if (!$('assist').hidden && faseNu === 'denken' && stapNu === 'ai') toonLabel('denken'); }, 1000);
 
   berichten.assist = function (d) {
     // Opmaak die het taalmodel soms toch gebruikt (*nadruk*, lijstjes) niet laten zien
@@ -382,8 +395,9 @@
     var a = $('assist');
     a.hidden = false;
     $('vlam').className = 'vlam ' + d.fase;
-    $('assistLabel').textContent = LABELS[d.fase] || '';
-    $('assistLabel').hidden = !LABELS[d.fase];
+    // Wat Haard op dit moment doet; bij de AI met een teller, zodat je ziet dat er iets gebeurt
+    if (d.stap !== stapNu) { stapNu = d.stap; stapSinds = Date.now(); }
+    toonLabel(d.fase);
     if (d.fase === 'luisteren') { $('assistJij').textContent = ''; $('assistAntwoord').textContent = ''; }
     if (d.jij != null) $('assistJij').textContent = '“' + d.jij + '”';
     if (d.antwoord != null) $('assistAntwoord').textContent = d.antwoord;
