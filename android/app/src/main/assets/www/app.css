@@ -88,19 +88,19 @@ html.met-fotos #rust { --tekst: #fff; --zacht: rgba(255,255,255,.8); color: #fff
    zodat hij op elke lucht leesbaar blijft. */
 #klok { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-54%); text-align: center; color: #fff;
   text-shadow: 0 4px 30px rgba(0,0,0,.28), 0 1px 3px rgba(0,0,0,.18); }
-.tijd { font-size: 290px; line-height: .86; font-weight: 300; letter-spacing: -6px; font-variant-numeric: tabular-nums;
+.tijd { font-size: 290px; line-height: .86; font-weight: 420; letter-spacing: -6px; font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum"; white-space: nowrap; }
 .tijd .dp { display: inline-block; margin: 0 2px; transform: translateY(-16px); animation: adem 4s ease-in-out infinite; }
 @keyframes adem { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
-.onder { display: flex; justify-content: center; align-items: center; margin-top: 26px; font-size: 32px; font-weight: 300; }
-.datum b { font-weight: 500; }
-#weerKnop { display: inline-flex; align-items: center; color: inherit; font-family: inherit; font-size: inherit; font-weight: 300;
+.onder { display: flex; justify-content: center; align-items: center; margin-top: 26px; font-size: 32px; font-weight: 400; }
+.datum b { font-weight: 650; }
+#weerKnop { display: inline-flex; align-items: center; color: inherit; font-family: inherit; font-size: inherit; font-weight: 400;
   padding: 4px 14px; margin-left: 18px; border-radius: 30px; background: rgba(255,255,255,.16); text-shadow: inherit; }
 #weerKnop:active { background: rgba(255,255,255,.3); }
 .weer-icoon svg { width: 38px; height: 38px; display: block; margin-right: 8px; filter: drop-shadow(0 1px 4px rgba(0,0,0,.2)); }
 .weer-zin { display: none; }
-.agenda-regel { margin-top: 16px; font-size: 24px; font-weight: 300; opacity: .9; }
-.agenda-regel b { font-weight: 500; }
+.agenda-regel { margin-top: 16px; font-size: 24px; font-weight: 400; opacity: .92; }
+.agenda-regel b { font-weight: 650; }
 html.met-muziek .agenda-regel { margin-left: 8px; }
 html.nacht .agenda-regel { display: none !important; }
 html.lucht-licht #klok { color: #23303e; text-shadow: 0 2px 20px rgba(255,255,255,.4); }
