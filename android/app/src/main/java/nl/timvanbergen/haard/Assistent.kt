@@ -386,7 +386,9 @@ class Assistent(private val ctx: Context) {
                 val stuk = data.optJSONObject("chat_log_delta")?.optString("content").orEmpty()
                 if (stuk.isNotEmpty()) {
                     antwoord.append(stuk)
-                    status("denken", jij = jij, antwoord = antwoord.toString(), stap = "ai")
+                    // Alleen het Nederlandse deel laten zien (de AI zet er eerst een Engelse kernregel voor)
+                    val nl = Opdrachten.alleenNederlands(antwoord.toString(), klaar = false)
+                    if (nl.isNotEmpty()) status("denken", jij = jij, antwoord = nl, stap = "ai")
                 }
             }
             "intent-end" -> {
@@ -395,7 +397,7 @@ class Assistent(private val ctx: Context) {
                 gesprekTijd = System.currentTimeMillis()
                 doorpraten = out.optBoolean("continue_conversation", false)
                 val ruw = out.optJSONObject("response")?.optJSONObject("speech")?.optJSONObject("plain")?.optString("speech").orEmpty()
-                val tekst = Opdrachten.vertaalStaat(ruw)
+                val tekst = Opdrachten.vertaalStaat(Opdrachten.alleenNederlands(ruw, klaar = true))
                 // Gedaan door Home Assistant zelf (lamp, timer): niet wachten op een voorgelezen "Aangezet"
                 val resp = out.optJSONObject("response") ?: JSONObject()
                 if (data.optBoolean("processed_locally") && resp.optString("response_type") == "action_done" &&
@@ -553,6 +555,21 @@ object Opdrachten {
     fun isBevestigingZin(zin: String): Boolean {
         return Regex("^(aangezet|uitgezet|gedaan|ok[eé]?|timer (gezet|geannuleerd|gepauzeerd|hervat|aangepast)|.*\\b(aangepast|geopend|gesloten|gepauzeerd|hervat|gestopt|ingesteld))\\b",
             RegexOption.IGNORE_CASE).containsMatchIn(zin.trim())
+    }
+
+    /**
+     * De AI schrijft eerst "EN: <kern in het Engels>" (daar zit zijn kennis het best) en dan "NL: <antwoord>".
+     * Alleen het Nederlandse deel wordt getoond en voorgelezen. Tijdens het schrijven (klaar = false) is het leeg
+     * zolang de Nederlandse regel nog niet begonnen is.
+     */
+    fun alleenNederlands(s: String, klaar: Boolean): String {
+        Regex("(?i)\\bNL\\s*:").findAll(s).lastOrNull()?.let { return s.substring(it.range.last + 1).trim() }
+        if (Regex("(?i)^\\s*EN\\s*:").containsMatchIn(s)) {
+            if (!klaar) return ""
+            // Geen NL-regel gekomen: dan alles behalve de Engelse regel
+            return s.lines().filterNot { Regex("(?i)^\\s*EN\\s*:").containsMatchIn(it) }.joinToString(" ").trim()
+        }
+        return s.trim()
     }
 
     /** Home Assistant zegt soms de Engelse toestand ("Nee, die is off"): naar gewoon Nederlands. */

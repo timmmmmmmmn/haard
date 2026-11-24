@@ -17,7 +17,7 @@ services:
     environment:
       OLLAMA_KEEP_ALIVE: "-1"          # model blijft in het geheugen: geen laadtijd per vraag
       OLLAMA_NUM_PARALLEL: "2"         # twee plekken: Home Assistant houdt zo zijn lange vaste prompt in de cache, naast Open WebUI
-      OLLAMA_MAX_LOADED_MODELS: "2"
+      OLLAMA_MAX_LOADED_MODELS: "1"      # nooit twee grote modellen tegelijk: dat past niet in 24 GB
       OLLAMA_FLASH_ATTENTION: "1"
       OLLAMA_KV_CACHE_TYPE: "q8_0"     # halve geheugen voor de context
       OLLAMA_CONTEXT_LENGTH: "${CONTEXT:-8192}"

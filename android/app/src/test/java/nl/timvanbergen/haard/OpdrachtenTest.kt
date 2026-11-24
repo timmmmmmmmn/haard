@@ -25,6 +25,16 @@ class OpdrachtenTest {
     }
 }
 
+class NederlandsTest {
+    @org.junit.Test fun engelseRegelWeg() {
+        org.junit.Assert.assertEquals("De Noordzee ligt ertussen.", Opdrachten.alleenNederlands("EN: North Sea (Noordzee)\nNL: De Noordzee ligt ertussen.", true))
+        org.junit.Assert.assertEquals("", Opdrachten.alleenNederlands("EN: North Sea (Noord", false))
+        org.junit.Assert.assertEquals("De Noordzee", Opdrachten.alleenNederlands("EN: North Sea\nNL: De Noordzee", false))
+        org.junit.Assert.assertEquals("Het is 20:08", Opdrachten.alleenNederlands("Het is 20:08", true))
+        org.junit.Assert.assertEquals("Alleen dit.", Opdrachten.alleenNederlands("EN: only this\nAlleen dit.", true))
+    }
+}
+
 class BevestigingTest {
     @org.junit.Test fun belletjeOfVoorlezen() {
         listOf("Aangezet", "Uitgezet", "Kleur aangepast", "Helderheid aangepast", "Timer gezet voor 10 minuten", "Timer geannuleerd")

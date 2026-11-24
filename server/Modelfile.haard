@@ -1,0 +1,5 @@
+# Haard: hetzelfde model, maar rustiger en feitelijker (lage temperatuur) voor gesproken antwoorden
+FROM qwen3:30b-a3b-instruct-2507-q4_K_M
+PARAMETER temperature 0.3
+PARAMETER top_p 0.8
+PARAMETER top_k 20
