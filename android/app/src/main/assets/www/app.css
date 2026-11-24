@@ -86,11 +86,11 @@ html.met-fotos #rust { --tekst: #fff; --zacht: rgba(255,255,255,.8); color: #fff
 
 /* De klok: groot en in het midden, de datum, het weer en het feest eronder. Wit met een zachte schaduw,
    zodat hij op elke lucht leesbaar blijft. */
-#klok { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-54%); text-align: center; color: #fff;
+#klok { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-46%); text-align: center; color: #fff;
   text-shadow: 0 4px 30px rgba(0,0,0,.28), 0 1px 3px rgba(0,0,0,.18); }
-.tijd { font-size: 290px; line-height: .86; font-weight: 420; letter-spacing: -6px; font-variant-numeric: tabular-nums;
+.tijd { font-size: 240px; line-height: .86; font-weight: 560; letter-spacing: -5px; font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum"; white-space: nowrap; }
-.tijd .dp { display: inline-block; margin: 0 2px; transform: translateY(-16px); }
+.tijd .dp { display: inline-block; margin: 0 2px; transform: translateY(-13px); }
 @keyframes adem { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
 .onder { display: flex; justify-content: center; align-items: center; margin-top: 26px; font-size: 32px; font-weight: 400; }
 .datum b { font-weight: 650; }
