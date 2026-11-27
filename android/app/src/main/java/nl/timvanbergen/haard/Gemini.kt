@@ -21,15 +21,16 @@ import java.util.concurrent.TimeUnit
  */
 object Gemini {
 
-    // De "-latest"-namen schuiven vanzelf mee met nieuwe versies van Google
-    private const val SNEL = "gemini-flash-lite-latest"
-    private const val SLIM = "gemini-flash-latest"
+    // Schuift vanzelf mee met nieuwe versies van Google. Flash-Lite: binnen een halve seconde, en de grote Flash
+    // was bij het testen (nov. 2026) vaak overbelast. Hij doet zowel het uitschrijven als de antwoorden.
+    private const val MODEL = "gemini-flash-lite-latest"
     private const val API = "https://generativelanguage.googleapis.com/v1beta/models/"
 
     class Fout(melding: String) : Exception(melding)
 
     private val http = HomeAssistant.http.newBuilder().readTimeout(40, TimeUnit.SECONDS).pingInterval(0, TimeUnit.SECONDS).build()
-    private var zonderDenkInstelling = false // nieuwere modellen willen soms geen thinkingBudget: dan zonder
+    private var zonderDenkInstelling = false // kent het model "minimal" niet: dan zonder instelling
+    private var zoekenUitTot = 0L // Google Zoeken zit niet altijd in het gratis tegoed: dan een uur zonder
 
     val sleutel: String? get() = Instellingen.prefs.getString("gemini_sleutel", null)?.takeIf { it.isNotBlank() }
 
@@ -44,7 +45,7 @@ object Gemini {
                 .put(JSONObject().put("inlineData", JSONObject().put("mimeType", "audio/wav").put("data", Base64.encodeToString(wav(pcm), Base64.NO_WRAP))))
                 .put(JSONObject().put("text", prompt)))))
             .put("generationConfig", config(0.0, 200))
-        val tekst = vraagModel(SNEL, body, null).trim().trim('"', '“', '”').trim()
+        val tekst = vraagModel(MODEL, body, null).trim().trim('"', '“', '”').trim()
         return if (tekst == "-" || tekst.isEmpty()) "" else tekst
     }
 
@@ -53,7 +54,8 @@ object Gemini {
      * [huis] = de echte waarden uit Home Assistant. [stuk] krijgt het antwoord tot nu toe, terwijl het binnenkomt.
      */
     fun antwoord(vraag: String, eerder: List<Pair<String, String>>, huis: String, stuk: (String) -> Unit): String {
-        val nu = SimpleDateFormat("EEEE d MMMM yyyy, HH:mm", Locale("nl", "NL")).format(Date())
+        val nu = SimpleDateFormat("EEEE d MMMM yyyy, HH:mm", Locale("nl", "NL")).format(Date()) + ", week " +
+            java.util.Calendar.getInstance(Locale("nl", "NL")).get(java.util.Calendar.WEEK_OF_YEAR) + ". " + totKerst()
         val systeem = """
             Je bent Haard, een spraakassistent op een tablet in de slaapkamer van Tim, in Nederland. Het is nu $nu.
             Je antwoord wordt voorgelezen. Antwoord daarom in gewoon gesproken Nederlands en kort: één tot drie zinnen,
@@ -72,20 +74,29 @@ object Gemini {
         val body = JSONObject()
             .put("systemInstruction", JSONObject().put("parts", JSONArray().put(JSONObject().put("text", systeem))))
             .put("contents", inhoud)
-            .put("tools", JSONArray().put(JSONObject().put("google_search", JSONObject())))
-            .put("generationConfig", config(0.4, 500))
-        return vraagModel(SLIM, body, stuk).trim()
+            .put("generationConfig", config(0.4, 800, "low"))
+        if (System.currentTimeMillis() > zoekenUitTot) body.put("tools", JSONArray().put(JSONObject().put("google_search", JSONObject())))
+        return vraagModel(MODEL, body, stuk).trim()
     }
 
-    private fun config(temp: Double, max: Int): JSONObject {
+    /** Rekenen met datums gaat een taalmodel soms mis: dit geven we kant-en-klaar mee. */
+    private fun totKerst(): String {
+        val vandaag = java.time.LocalDate.now()
+        var kerst = java.time.LocalDate.of(vandaag.year, 12, 25)
+        if (vandaag.isAfter(kerst)) kerst = kerst.plusYears(1)
+        val d = java.time.temporal.ChronoUnit.DAYS.between(vandaag, kerst)
+        return if (d == 0L) "Vandaag is het eerste kerstdag" else "Nog $d dagen tot eerste kerstdag"
+    }
+
+    private fun config(temp: Double, max: Int, denken: String = "minimal"): JSONObject {
         val c = JSONObject().put("temperature", temp).put("maxOutputTokens", max)
-        // Niet eerst "nadenken": dat maakt het antwoord seconden trager en is voor korte vragen niet nodig
-        if (!zonderDenkInstelling) c.put("thinkingConfig", JSONObject().put("thinkingBudget", 0))
+        // Uitschrijven zonder nadenken; antwoorden met een beetje ("low", ~0,2 s), anders rekent hij fout
+        if (!zonderDenkInstelling) c.put("thinkingConfig", JSONObject().put("thinkingLevel", denken))
         return c
     }
 
     /** Eén verzoek, als stroom (SSE), zodat het antwoord al verschijnt terwijl het geschreven wordt. */
-    private fun vraagModel(model: String, body: JSONObject, stuk: ((String) -> Unit)?): String {
+    private fun vraagModel(model: String, body: JSONObject, stuk: ((String) -> Unit)?, poging: Int = 0): String {
         val key = sleutel ?: throw Fout("Er is nog geen Gemini-sleutel ingesteld.")
         val req = Request.Builder().url("$API$model:streamGenerateContent?alt=sse")
             .header("x-goog-api-key", key)
@@ -95,10 +106,22 @@ object Gemini {
             http.newCall(req).execute().use { r ->
                 if (!r.isSuccessful) {
                     val fout = r.body?.string().orEmpty()
-                    if (r.code == 400 && !zonderDenkInstelling && fout.contains("thinking", true)) {
+                    // Model kent de denk-instelling niet: zonder opnieuw
+                    if (r.code == 400 && !zonderDenkInstelling && body.optJSONObject("generationConfig")?.has("thinkingConfig") == true) {
                         zonderDenkInstelling = true
                         body.optJSONObject("generationConfig")?.remove("thinkingConfig")
-                        return vraagModel(model, body, stuk)
+                        return vraagModel(model, body, stuk, poging)
+                    }
+                    // Op = op, maar vaak alleen voor Google Zoeken: zonder zoeken opnieuw
+                    if (r.code == 429 && body.has("tools")) {
+                        zoekenUitTot = System.currentTimeMillis() + 60 * 60_000
+                        body.remove("tools")
+                        return vraagModel(model, body, stuk, poging)
+                    }
+                    // Even te druk bij Google: één keer opnieuw
+                    if (r.code >= 500 && poging == 0) {
+                        Thread.sleep(800)
+                        return vraagModel(model, body, stuk, 1)
                     }
                     throw Fout(when (r.code) {
                         400, 401, 403 -> if (fout.contains("API key", true) || fout.contains("API_KEY", true)) "De Gemini-sleutel klopt niet." else "Gemini snapte de vraag niet."
