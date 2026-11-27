@@ -151,6 +151,58 @@ object Gemini {
         return tekst.toString()
     }
 
+    // Uitspreken: officiële stemmen van Gemini, als stroom. Gratis: 3 keer per minuut per model, dus twee modellen
+    private val STEM_MODELLEN = listOf("gemini-3.8-flash-lite-tts", "gemini-3.8-flash-tts")
+    private val stemRustTot = HashMap<String, Long>()
+    private val stemHttp = http.newBuilder().readTimeout(6, TimeUnit.SECONDS).build()
+
+    /**
+     * Spreekt [tekst] uit met een stem van Gemini: [stuk] krijgt 16-bit pcm en de samplefrequentie zodra het binnenkomt
+     * en geeft false om te stoppen. True als er geluid kwam; false als het niet lukte (dan neemt Ronnie het over).
+     */
+    fun spreek(tekst: String, stem: String, stuk: (ByteArray, Int) -> Boolean): Boolean {
+        val key = sleutel ?: return false
+        for (model in STEM_MODELLEN) {
+            if (System.currentTimeMillis() < (stemRustTot[model] ?: 0)) continue
+            val body = JSONObject()
+                .put("contents", JSONArray().put(JSONObject().put("parts", JSONArray().put(JSONObject()
+                    .put("text", "Zeg rustig en vriendelijk in het Nederlands: $tekst")))))
+                .put("generationConfig", JSONObject().put("responseModalities", JSONArray().put("AUDIO"))
+                    .put("speechConfig", JSONObject().put("voiceConfig", JSONObject().put("prebuiltVoiceConfig", JSONObject().put("voiceName", stem)))))
+            val req = Request.Builder().url("$API$model:streamGenerateContent?alt=sse").header("x-goog-api-key", key)
+                .post(body.toString().toRequestBody("application/json".toMediaType())).build()
+            var geluid = false
+            try {
+                stemHttp.newCall(req).execute().use { r ->
+                    if (r.code == 429) { stemRustTot[model] = System.currentTimeMillis() + 60_000; return@use }
+                    if (!r.isSuccessful) return@use
+                    val bron = r.body?.source() ?: return@use
+                    while (true) {
+                        val regel = bron.readUtf8Line() ?: break
+                        if (!regel.startsWith("data:")) continue
+                        val delen = runCatching { JSONObject(regel.substring(5).trim()) }.getOrNull()
+                            ?.optJSONArray("candidates")?.optJSONObject(0)?.optJSONObject("content")?.optJSONArray("parts") ?: continue
+                        for (i in 0 until delen.length()) {
+                            val d = delen.getJSONObject(i).optJSONObject("inlineData") ?: continue
+                            var pcm = Base64.decode(d.optString("data"), Base64.DEFAULT)
+                            val mime = d.optString("mimeType")
+                            val rate = Regex("rate=(\\d+)").find(mime)?.groupValues?.get(1)?.toIntOrNull() ?: 24000
+                            if (pcm.size > 44 && pcm[0] == 'R'.code.toByte() && pcm[1] == 'I'.code.toByte()) pcm = pcm.copyOfRange(44, pcm.size)
+                            if (pcm.isEmpty()) continue
+                            geluid = true
+                            if (!stuk(pcm, rate)) return true
+                        }
+                    }
+                }
+            } catch (_: Exception) {
+                if (geluid) return true // halverwege weggevallen: wat er was, is gezegd
+                continue
+            }
+            if (geluid) return true
+        }
+        return false
+    }
+
     private fun wav(pcm: ByteArray): ByteArray {
         val kop = ByteBuffer.allocate(44).order(ByteOrder.LITTLE_ENDIAN)
         kop.put("RIFF".toByteArray()).putInt(36 + pcm.size).put("WAVE".toByteArray())

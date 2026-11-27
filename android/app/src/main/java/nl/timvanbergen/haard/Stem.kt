@@ -24,7 +24,9 @@ object Stem {
     @Volatile private var beurt = 0
     @Volatile private var track: AudioTrack? = null
 
-    val klaar: Boolean get() = tts != null
+    /** Gemini-stem (online, snel) met Ronnie (op de tablet) als terugval. */
+    val klaar: Boolean get() = tts != null || Gemini.sleutel != null
+    private const val STEM = "Charon"
 
     /** Het model laden (een paar seconden); daarna kan [spreek]. */
     fun laad(map: File) = h.post {
@@ -49,8 +51,11 @@ object Stem {
     fun spreek(tekst: String, klaar: () -> Unit) {
         val mijn = ++beurt
         h.post {
+            if (Stilte.nu || mijn != beurt || tekst.isBlank()) return@post klaar()
+            // Eerst de stem van Gemini: binnen een halve seconde geluid. Lukt dat niet (geen internet, limiet), dan Ronnie.
+            if (online(tekst, mijn)) return@post klaar()
             val t = tts
-            if (t == null || Stilte.nu || mijn != beurt || tekst.isBlank()) return@post klaar()
+            if (t == null || Stilte.nu || mijn != beurt) return@post klaar()
             val sr = t.sampleRate()
             val buf = AudioTrack.getMinBufferSize(sr, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_FLOAT)
             val tr = runCatching {
@@ -102,6 +107,38 @@ object Stem {
             if (track === tr) track = null
             klaar()
         }
+    }
+
+    private fun online(tekst: String, mijn: Int): Boolean {
+        var tr: AudioTrack? = null
+        var frames = 0L
+        val begin = System.currentTimeMillis()
+        val gelukt = Gemini.spreek(uitspraak(tekst), STEM) { pcm, rate ->
+            if (mijn != beurt || Stilte.nu) return@spreek false
+            val t = tr ?: (runCatching {
+                AudioTrack.Builder()
+                    .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANT)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
+                    .setAudioFormat(AudioFormat.Builder().setSampleRate(rate).setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT).build())
+                    .setBufferSizeInBytes(maxOf(AudioTrack.getMinBufferSize(rate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT), rate))
+                    .setTransferMode(AudioTrack.MODE_STREAM)
+                    .build().also { it.play(); track = it; tr = it
+                        android.util.Log.i("Haard", "Stem (Gemini): eerste geluid na ${System.currentTimeMillis() - begin} ms") }
+            }.getOrNull() ?: return@spreek false)
+            t.write(pcm, 0, pcm.size, AudioTrack.WRITE_BLOCKING)
+            frames += pcm.size / 2
+            true
+        }
+        tr?.let { t ->
+            // Wachten tot het laatste stukje echt uit de luidspreker is
+            val tot = System.currentTimeMillis() + 3000
+            while (mijn == beurt && t.playbackHeadPosition < frames && System.currentTimeMillis() < tot) Thread.sleep(40)
+            runCatching { t.stop() }
+            t.release()
+            if (track === t) track = null
+        }
+        return gelukt || tr != null
     }
 
     /** Meteen stil (tik op het scherm, "stop", of een nieuwe vraag). */

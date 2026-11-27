@@ -59,11 +59,32 @@ object Verstaan {
     }
 
     /** Begin van een vraag: allebei schoon beginnen. */
-    fun begin() = h.post { vrij?.reset(); vast?.reset() }
+    fun begin() = h.post { vrij?.reset(); vast?.reset(); piek = 400f }
 
     fun geluid(pcm: ByteArray) = h.post {
-        vrij?.acceptWaveForm(pcm, pcm.size)
-        vast?.acceptWaveForm(pcm, pcm.size)
+        val luid = harder(pcm)
+        vrij?.acceptWaveForm(luid, luid.size)
+        vast?.acceptWaveForm(luid, luid.size)
+    }
+
+    // De microfoon van de Fire is zacht (spraak ~150-600): voor Vosk tot zes keer harder. Het hardste stukje tot nu
+    // toe bepaalt hoeveel, zodat luide spraak niet over de rand gaat (dan klinkt het vervormd en verstaat Vosk het niet).
+    private var piek = 400f
+
+    private fun harder(pcm: ByteArray): ByteArray {
+        val n = pcm.size / 2
+        var som = 0.0
+        for (i in 0 until n) { val x = ((pcm[2 * i + 1].toInt() shl 8) or (pcm[2 * i].toInt() and 0xff)).toShort().toDouble(); som += x * x }
+        piek = maxOf(piek, Math.sqrt(som / n).toFloat())
+        val keer = (2500f / piek).coerceIn(1f, 6f)
+        if (keer <= 1f) return pcm
+        val uit = ByteArray(pcm.size)
+        for (i in 0 until n) {
+            val x = ((pcm[2 * i + 1].toInt() shl 8) or (pcm[2 * i].toInt() and 0xff)).toShort()
+            val y = (x * keer).toInt().coerceIn(-32768, 32767)
+            uit[2 * i] = y.toByte(); uit[2 * i + 1] = (y shr 8).toByte()
+        }
+        return uit
     }
 
     /** Klaar met praten: wat is er gezegd? [dan] komt op de verstaan-draad. */

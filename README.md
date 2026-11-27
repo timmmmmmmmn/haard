@@ -42,7 +42,7 @@ De XPS-server (Whisper, Ollama, Piper, Speech-to-Phrase) in `server/` wordt op d
 2. Daarna luistert **Vosk** op de tablet mee, met een lijst vaste commando's die Haard zelf maakt uit wat Home Assistant aan de assistent laat zien (namen, aliassen, kamers): "doe het licht uit", "zet mijn lamp op rood", "zet een timer van tien minuten", "volgend nummer". De tablet hoort zelf wanneer je klaar bent met praten (~0,5 s stilte).
 3. Een vast commando gaat meteen naar de eigen afhandeling van Home Assistant (met het apparaat erbij, dus de kamer); gelukt = een belletje. Dit werkt ook zonder internet.
 4. Anders schrijft **Gemini** uit wat je zei. Muziek, volume, agenda en weer regelt de tablet zelf; opdrachten gaan naar Home Assistant; wat HA niet kent is een vraag voor Gemini, met de echte waarden uit huis en Google Zoeken.
-5. **Piper** (stem Ronnie) spreekt het antwoord uit op de tablet zelf, zin voor zin. Omroepen uit Home Assistant spreekt Haard ook zelf uit.
+5. Het antwoord spreekt een stem van **Gemini** uit (Charon, als stroom: geluid na ~0,5 s). Zonder internet of boven de gratis limiet (3 per minuut per model) neemt **Piper** (stem Ronnie) het over, op de tablet zelf; die is op de Fire wel ~3x trager dan hij praat. Omroepen uit Home Assistant spreekt Haard ook zelf uit.
 
 De spraakmodellen (Vosk + Piper, ~140 MB) haalt de app één keer op uit de release `modellen-1`.
 Zonder Gemini-sleutel werken alleen de vaste commando's. Een sleutel maak je gratis op
