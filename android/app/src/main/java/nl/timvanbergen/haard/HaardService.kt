@@ -48,10 +48,16 @@ class HaardService : Service() {
         Esphome.start(this)
         start()
         stilteKlok.run()
-        // Alleen in testversies: een opname (files/test.wav, 16 kHz mono) inspelen alsof je het zei
-        if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) Thread {
-            SystemClock.sleep(25_000)
-            val wav = java.io.File(filesDir, "test.wav").takeIf { it.exists() }?.readBytes() ?: return@Thread
+        // Testen zonder geluid in de kamer: staat er bij het starten een opname (16 kHz mono) in
+        // Android/data/nl.timvanbergen.haard/files/test.wav (alleen via usb/adb te zetten), dan "hoort" Haard die
+        // één keer alsof je het zei, en gooit hem daarna weg.
+        Thread {
+            val f = java.io.File(getExternalFilesDir(null), "test.wav")
+            if (!f.exists()) return@Thread
+            var wacht = 0
+            while (!Verstaan.klaar && wacht++ < 120) SystemClock.sleep(1000)
+            SystemClock.sleep(5_000) // de vaste zinnen uit Home Assistant
+            val wav = runCatching { f.readBytes().also { f.delete() } }.getOrNull() ?: return@Thread
             val a = assistent ?: return@Thread
             test = true
             a.start()
