@@ -63,12 +63,12 @@ android {
 // Piper (de stem) draait op de tablet via sherpa-onnx. De versie 1.13 is de laatste met espeak-ng (de uitspraak);
 // de bibliotheken komen bij het bouwen van GitHub, zodat ze niet in de repo hoeven.
 val sherpaVersie = "1.13.8"
-val haalSherpa by tasks.registering(Exec::class) {
+val haalSherpa = tasks.register<Exec>("haalSherpa") {
     val doel = layout.buildDirectory.dir("sherpa").get().asFile
     outputs.dir(doel)
     onlyIf { !doel.resolve("jniLibs/armeabi-v7a/libsherpa-onnx-jni.so").exists() }
     commandLine("sh", "-c", "mkdir -p '$doel' && curl -sfL https://github.com/k2-fsa/sherpa-onnx/releases/download/v$sherpaVersie/" +
-        "sherpa-onnx-v$sherpaVersie-android-static-link-onnxruntime.tar.bz2 | tar xj -C '$doel' jniLibs/armeabi-v7a jniLibs/arm64-v8a")
+        "sherpa-onnx-v$sherpaVersie-android-static-link-onnxruntime.tar.bz2 | tar xj -C '$doel' && rm -rf '$doel/jniLibs/x86' '$doel/jniLibs/x86_64'")
 }
 tasks.named("preBuild") { dependsOn(haalSherpa) }
 
