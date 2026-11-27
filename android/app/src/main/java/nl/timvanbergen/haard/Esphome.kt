@@ -208,7 +208,14 @@ object Esphome {
         val klaar = { if (!gemeld) { gemeld = true; stuur(o, 120, Pb().b(1, true).bytes()); meldMedia() } }
         // Vangnet: als afspelen blijft hangen, toch op tijd "klaar" melden
         main.postDelayed({ if (!gemeld) { stop(); klaar() } }, 90_000)
-        if (voor.isNotEmpty() && !Stilte.nu) speel(voor, 4) { speel(media, 4, klaar) } else speel(media, 4, klaar)
+        // De tekst zelf uitspreken met de stem op de tablet; anders het geluid dat Home Assistant maakte
+        val zeg = {
+            if (tekst.isNotEmpty() && Stem.klaar && !Stilte.nu) {
+                stop(); staat = 4; meldMedia()
+                Stem.spreek(tekst) { main.post { staat = 1; klaar() } }
+            } else speel(media, 4, klaar)
+        }
+        if (voor.isNotEmpty() && !Stilte.nu) speel(voor, 4) { zeg() } else zeg()
     }
 
     // ---------- Timers ----------

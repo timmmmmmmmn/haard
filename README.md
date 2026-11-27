@@ -1,18 +1,23 @@
 # Haard
 
 Een eigen vervanger voor de Google Nest Hub: een Fire HD 8-tablet die luistert naar **"Hey Fire"**,
-vragen beantwoordt met een **lokale AI** en het huis bedient via **Home Assistant**.
-Alles draait thuis, zonder Google of Amazon.
+het huis bedient via **Home Assistant** en moeilijke vragen aan **Gemini** stelt.
+Geen server nodig: verstaan en spreken gebeurt op de tablet zelf.
 
 ```
- Fire HD 8 (app Haard)                Home Assistant (HA OS)              Dell XPS 8700 (Arch, alleen CPU)
- ┌───────────────────────┐   wss    ┌──────────────────────────┐  LAN  ┌──────────────────────────────┐
- │ wekwoord op de tablet │ ───────► │ Assist-pijplijn          │ ────► │ Whisper   spraak → tekst     │
- │ klok · weer · foto's  │          │  • eigen afhandeling     │       │ Ollama    taalmodel (MoE)    │
- │ muziek · nachtstand   │ ◄─────── │    ("lamp aan": direct)  │ ◄──── │ Piper     tekst → spraak     │
- └───────────────────────┘   tts    │  • anders het taalmodel  │       │ Open WebUI → ai.timvanbergen │
-                                    └──────────────────────────┘       └──────────────────────────────┘
+ Fire HD 8 (app Haard)                                  Home Assistant (HA OS)
+ ┌─────────────────────────────────────────┐   wss    ┌──────────────────────────────┐
+ │ wekwoord        openWakeWord (eigen)     │ ───────► │ eigen afhandeling (geen AI): │
+ │ commando's      Vosk, vaste zinnen       │          │ lampen, timers, tijd, …      │
+ │ stem            Piper "Ronnie"           │ ◄─────── │ ESPHome-apparaat "Haard"     │
+ │ klok · weer · foto's · muziek · agenda   │          └──────────────────────────────┘
+ └─────────────────────────────────────────┘
+          │ alleen na het wekwoord, als het geen vast commando is
+          ▼
+   Gemini (Google): uitschrijven wat je zei + antwoord op echte vragen (met Google Zoeken)
 ```
+
+De XPS-server (Whisper, Ollama, Piper, Speech-to-Phrase) in `server/` wordt op dit moment niet gebruikt.
 
 ## Onderdelen
 
@@ -33,10 +38,15 @@ Alles draait thuis, zonder Google of Amazon.
 
 ## Hoe een vraag loopt
 
-1. De tablet hoort zelf het wekwoord "Hey Fire" / "Oké Fire" (openWakeWord, eigen model). Pas daarna gaat er geluid naar Home Assistant.
-2. Het geluid gaat tegelijk naar **Speech-to-Phrase** (pijplijn "Haard snel": vaste commando's, 0,1–0,5 s) en naar **Whisper** (alles, ~2 s). Herkent Speech-to-Phrase een commando, dan voert Home Assistant het meteen uit en klinkt er een belletje; anders gaat Haard verder met Whisper. De tablet hoort zelf wanneer je klaar bent met praten (~0,5 s stilte). Zinnen die Whisper bij stilte verzint worden genegeerd.
-3. Muziek, volume, agenda en "speel …" regelt de tablet zelf.
-4. De rest gaat naar Home Assistant, met het apparaat erbij (dus de kamer). Commando's ("doe het licht uit", "zet mijn lamp op rood", "zet een timer van 10 minuten") handelt HA zelf af, binnen een seconde. Echte vragen gaan naar het taalmodel op de XPS, dat de echte meetwaarden meekrijgt maar zelf niets bedient. Piper (stem Ronnie) leest het antwoord voor. Op het scherm zie je wat Haard doet: "Verstaan…", "In je agenda kijken…", "De AI denkt na · 3 s".
+1. De tablet hoort zelf het wekwoord "Hey Fire" / "Oké Fire" (openWakeWord, eigen model).
+2. Daarna luistert **Vosk** op de tablet mee, met een lijst vaste commando's die Haard zelf maakt uit wat Home Assistant aan de assistent laat zien (namen, aliassen, kamers): "doe het licht uit", "zet mijn lamp op rood", "zet een timer van tien minuten", "volgend nummer". De tablet hoort zelf wanneer je klaar bent met praten (~0,5 s stilte).
+3. Een vast commando gaat meteen naar de eigen afhandeling van Home Assistant (met het apparaat erbij, dus de kamer); gelukt = een belletje. Dit werkt ook zonder internet.
+4. Anders schrijft **Gemini** uit wat je zei. Muziek, volume, agenda en weer regelt de tablet zelf; opdrachten gaan naar Home Assistant; wat HA niet kent is een vraag voor Gemini, met de echte waarden uit huis en Google Zoeken.
+5. **Piper** (stem Ronnie) spreekt het antwoord uit op de tablet zelf, zin voor zin. Omroepen uit Home Assistant spreekt Haard ook zelf uit.
+
+De spraakmodellen (Vosk + Piper, ~140 MB) haalt de app één keer op uit de release `modellen-1`.
+Zonder Gemini-sleutel werken alleen de vaste commando's. Een sleutel maak je gratis op
+[aistudio.google.com/apikey](https://aistudio.google.com/apikey) en plak je in Instellingen → Spraak.
 
 ## De tablet klaarmaken (Fire HD 8, 2020)
 

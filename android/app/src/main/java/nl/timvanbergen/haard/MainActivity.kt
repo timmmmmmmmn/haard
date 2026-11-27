@@ -245,6 +245,7 @@ class MainActivity : ComponentActivity() {
             .put("ingelogd", HomeAssistant.ingelogd)
             .put("token", Instellingen.prefs.getString("token", null) != null)
             .put("media_toegang", Media.heeftToegang(this@MainActivity))
+            .put("gemini", Gemini.sleutel != null)
             .toString()
 
         @JavascriptInterface fun zet(sleutel: String, waarde: String) {
@@ -267,6 +268,11 @@ class MainActivity : ComponentActivity() {
         @JavascriptInterface fun token(token: String) = HomeAssistant.zetToken(token)
 
         @JavascriptInterface fun uitloggen() = HomeAssistant.uitloggen()
+
+        /** De sleutel voor Gemini (leeg = wissen). De pagina kan hem alleen zetten, nooit teruglezen. */
+        @JavascriptInterface fun gemini(sleutel: String) {
+            Instellingen.prefs.edit().apply { if (sleutel.isBlank()) remove("gemini_sleutel") else putString("gemini_sleutel", sleutel.trim()) }.apply()
+        }
 
         /** API-verzoek naar Home Assistant; het antwoord komt terug via haard.antwoord(id, status, tekst). */
         @JavascriptInterface fun ha(id: Int, methode: String, pad: String, body: String) {

@@ -27,6 +27,7 @@ import java.nio.ByteOrder
 class HaardService : Service() {
 
     @Volatile private var aan = false
+    @Volatile private var test = false // een testopname speelt: de echte microfoon even niet doorgeven
     private var lus: Thread? = null
     private var wake: PowerManager.WakeLock? = null
 
@@ -42,10 +43,25 @@ class HaardService : Service() {
             acquire()
         }
         HomeAssistant.Socket.start()
-        SnellePijplijn.zoek()
+        // Spraakherkenning en stem op de tablet zelf; de eerste keer worden de modellen opgehaald
+        Modellen.zorg(this) { Verstaan.laad(Modellen.vosk); Stem.laad(Modellen.stem) }
         Esphome.start(this)
         start()
         stilteKlok.run()
+        // Alleen in testversies: een opname (files/test.wav, 16 kHz mono) inspelen alsof je het zei
+        if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) Thread {
+            SystemClock.sleep(25_000)
+            val wav = java.io.File(filesDir, "test.wav").takeIf { it.exists() }?.readBytes() ?: return@Thread
+            val a = assistent ?: return@Thread
+            test = true
+            a.start()
+            SystemClock.sleep(300)
+            var i = 44
+            while (i < wav.size) { a.geluid(wav.copyOfRange(i, minOf(wav.size, i + Wekwoord.BLOK * 2))); i += Wekwoord.BLOK * 2; SystemClock.sleep(80) }
+            // Daarna stilte, zodat hij hoort dat je klaar bent
+            repeat(15) { a.geluid(ByteArray(Wekwoord.BLOK * 2)); SystemClock.sleep(80) }
+            test = false
+        }.start()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -53,6 +69,7 @@ class HaardService : Service() {
             stopLus()
             start()
         }
+
         return START_STICKY
     }
 
@@ -147,7 +164,8 @@ class HaardService : Service() {
                     continue
                 }
                 val a = assistent ?: break
-                if (a.fase == Assistent.Fase.LUISTEREN) {
+                achtergrond(pcm)
+                if (a.fase == Assistent.Fase.LUISTEREN && !test) {
                     bytes.clear()
                     bytes.asShortBuffer().put(pcm)
                     a.geluid(bytes.array().copyOf())
@@ -180,6 +198,17 @@ class HaardService : Service() {
             rec.release()
             ww?.close()
         }
+    }
+
+    // Hoe hard het in de kamer is als niemand praat (het stilste vijfde van de laatste twee seconden):
+    // zo weet de assistent ook wat spraak is als je meteen na het wekwoord doorpraat
+    private val niveaus = FloatArray(25)
+    private var niveauI = 0
+    private fun achtergrond(pcm: ShortArray) {
+        var som = 0.0
+        for (x in pcm) som += x.toDouble() * x
+        niveaus[niveauI++ % niveaus.size] = Math.sqrt(som / pcm.size).toFloat()
+        if (niveauI >= niveaus.size) Assistent.achtergrond = niveaus.sorted()[niveaus.size / 5]
     }
 
     companion object {

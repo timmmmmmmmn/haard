@@ -185,6 +185,8 @@ object HomeAssistant {
                     status(true, null)
                     for (msg in wachtrij) socket.send(msg.toString())
                     wachtrij.clear()
+                    // Bij elke (her)verbinding de namen voor de vaste commando's opnieuw ophalen
+                    Verstaan.ververs()
                 }
                 "auth_invalid" -> {
                     // Het toegangstoken is net verlopen of ingetrokken: vernieuwen en nog één keer proberen

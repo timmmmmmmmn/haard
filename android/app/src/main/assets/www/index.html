@@ -86,8 +86,10 @@
         <div class="rij"><div class="rij-titel">Gevoeligheid</div>
           <div class="segment" id="gevoelig"><button data-v="laag">Laag</button><button data-v="normaal">Normaal</button><button data-v="hoog">Hoog</button></div></div>
         <div class="rij kolom"><div class="rij-sub">Zeg het wekwoord om te testen</div><div class="meter"><i id="meter"></i><b id="drempel"></b></div></div>
-        <div class="rij"><div class="rij-titel">Assistent in Home Assistant</div><select id="pipeline"><option value="">Standaard</option></select></div>
-        <div class="rij"><div class="rij-sub">Probeer: "doe de lamp in Tims kamer aan", "wat voor weer wordt het morgen?", "volgend nummer"</div>
+        <div class="rij"><div><div class="rij-titel">Verstaan en stem op de tablet</div><div class="rij-sub" id="modelSub">Bezig…</div></div></div>
+        <div class="rij kolom"><div><div class="rij-titel">Gemini voor moeilijke vragen</div><div class="rij-sub" id="geminiSub">Geen sleutel: alleen commando's</div></div>
+          <div class="naast"><input id="geminiSleutel" type="password" placeholder="Sleutel van aistudio.google.com" autocomplete="off" spellcheck="false"><button class="knop" id="geminiKnop">Opslaan</button></div></div>
+        <div class="rij"><div class="rij-sub">Probeer: "doe de lamp in Tims kamer aan", "wat voor weer wordt het morgen?", "wie won de Tour de France?"</div>
           <button class="knop" id="testKnop">Test</button></div>
       </div>
 

@@ -116,16 +116,7 @@
     $('haPunt').classList.toggle('aan', !!d.verbonden);
     if (!$('instVel').hidden) vulInstellingen();
     if (d.verbonden && !weerGeladen) laadWeer();
-    if (d.verbonden && !inst.pipeline) kiesHaard();
   };
-
-  // Nog geen assistent gekozen: dan die met de naam "Haard" (zo heet hij in Home Assistant)
-  function kiesHaard() {
-    ws({ type: 'assist_pipeline/pipeline/list' }).then(function (m) {
-      var p = ((m.result || {}).pipelines || []).filter(function (p) { return /^haard$/i.test(p.name); })[0];
-      if (p && !inst.pipeline) zet('pipeline', p.id);
-    }).catch(function () {});
-  }
 
   // ---------- Weer ----------
   var weerGeladen = false, weerEntity = null, verwachting = [];
@@ -372,7 +363,7 @@
 
   // ---------- Assistent ----------
   var LABELS = { luisteren: 'Ik luister…', denken: 'Even denken…', spreken: '', klaar: '', fout: '' };
-  var STAPPEN = { verstaan: 'Verstaan…', uitvoeren: 'Bezig…', ai: 'De AI denkt na', zoeken: 'Even opzoeken…',
+  var STAPPEN = { verstaan: 'Verstaan…', uitvoeren: 'Bezig…', ai: 'Gemini denkt na', zoeken: 'Even opzoeken…',
     agenda: 'In je agenda kijken…', weer: 'Weerbericht ophalen…', muziek: 'Muziek zoeken…' };
   var verbergTimer = null, stapNu = null, stapSinds = 0, faseNu = '';
   function toonLabel(fase) {
@@ -440,6 +431,11 @@
     var naam = (d.model || '').replace(/_v[\d.]+$/, '').replace(/_/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
     $('wwSub').textContent = d.fout ? d.fout : d.aan ? 'Luistert naar “' + naam + '”' : 'Uit: tik op de microfoon om iets te vragen';
   };
+  // Vosk (verstaan) en Piper (stem) op de tablet: de eerste keer worden ze opgehaald
+  berichten.modellen = function (d) {
+    $('modelSub').textContent = d.klaar ? 'Klaar: commando\'s en de stem werken zonder internet'
+      : d.fout ? d.fout + ' (probeert het straks opnieuw)' : 'Ophalen… ' + d.procent + '%';
+  };
   berichten.meter = function (d) { $('meter').style.width = Math.round(d.kans * 100) + '%'; };
 
   function vulInstellingen() {
@@ -461,21 +457,12 @@
     $('stilTotWeekend').value = inst.stil_tot_weekend;
     $('nachtAan').checked = inst.nacht;
     $('versie').textContent = 'Versie ' + N.versie();
+    $('geminiSub').textContent = inst.gemini ? 'Sleutel ingesteld: vragen gaan naar Gemini (met Google Zoeken)' : 'Geen sleutel: alleen commando\'s';
+    $('geminiKnop').textContent = inst.gemini ? 'Vervangen' : 'Opslaan';
     if (inst.ingelogd && haStatus.verbonden) laadKeuzes();
   }
 
   function laadKeuzes() {
-    ws({ type: 'assist_pipeline/pipeline/list' }).then(function (m) {
-      var r = m.result || {}, sel = $('pipeline');
-      sel.innerHTML = '<option value="">Standaard' + '</option>';
-      (r.pipelines || []).forEach(function (p) {
-        var o = document.createElement('option');
-        o.value = p.id;
-        o.textContent = p.name + (p.id === r.preferred_pipeline ? ' (voorkeur)' : '');
-        sel.appendChild(o);
-      });
-      sel.value = inst.pipeline || '';
-    }).catch(function () {});
     vraag('GET', '/api/states').then(function (states) {
       var sel = $('weerEntity');
       sel.innerHTML = '<option value="">Automatisch</option>';
@@ -510,7 +497,13 @@
   });
   $('uitlogKnop').addEventListener('click', function () { N.uitloggen(); setTimeout(vulInstellingen, 300); });
   $('wwAan').addEventListener('change', function () { zet('wekwoord', this.checked); });
-  $('pipeline').addEventListener('change', function () { zet('pipeline', this.value); });
+  $('geminiKnop').addEventListener('click', function () {
+    var t = $('geminiSleutel').value.trim();
+    N.gemini(t);
+    $('geminiSleutel').value = '';
+    toast(t ? 'Gemini-sleutel opgeslagen' : 'Gemini-sleutel gewist');
+    vulInstellingen();
+  });
   $('weerEntity').addEventListener('change', function () { zet('weer', this.value); laadWeer(); });
   $('stilAan').addEventListener('change', function () { zet('stil', this.checked); });
   $('stilVan').addEventListener('change', function () { zet('stil_van', this.value); });
@@ -546,7 +539,7 @@
     return c.toDataURL();
   }
   function demo() {
-    var s = { ha_url: 'https://ha.timvanbergen.nl', pipeline: '', wekwoord: true, gevoeligheid: 'normaal', thema: 'donker',
+    var s = { ha_url: 'https://ha.timvanbergen.nl', gemini: true, wekwoord: true, gevoeligheid: 'normaal', thema: 'donker',
       foto_interval: 30, stil: true, stil_van: '23:00', stil_tot: '08:00', stil_tot_weekend: '10:00', nacht: false, nacht_van: '23:00', nacht_tot: '07:00', weer: '', ingelogd: true, token: false, media_toegang: true };
     var nu = Date.now();
     var fc = [0, 1, 2, 3, 4, 5].map(function (i) {
@@ -557,6 +550,7 @@
       haard.bericht('ha', { verbonden: true, ingelogd: true });
       haard.bericht('wekwoord', { aan: true, model: 'hey_jarvis_v0.1' });
       haard.bericht('fotos', { aantal: 0, map: 'Pictures/Haard' });
+      haard.bericht('modellen', { klaar: false, procent: 42, fout: '' });
       if (location.hash === '#muziek' || location.hash === '#assist') {
         haard.bericht('media', { toegang: true, actief: true, speelt: true, titel: 'Midnight City', artiest: 'M83', app: 'Spotify', hoesUrl: demoHoes(),
           positie: 83000, tijdstip: Date.now(), duur: 243000 });
@@ -583,7 +577,7 @@
       luister: function () { haard.bericht('assist', { fase: 'luisteren' }); },
       stop: function () {}, media: function () {}, timerStop: function () {}, mediaToegang: function () {}, meten: function () {}, fotos: function () {},
       helderheid: function () {}, update: function () {}, open: function (u) { window.open(u); },
-      login: function () {}, token: function () {}, uitloggen: function () {}
+      login: function () {}, token: function () {}, uitloggen: function () {}, gemini: function () {}
     };
   }
 })();
