@@ -96,6 +96,19 @@ object Zinnen {
         if ("[unk]" in kern) return null
         val zeker = zekerheden.drop(van).take(kern.size)
         if (zeker.isNotEmpty() && (zeker.average() < 0.8 || zeker.min() < 0.5)) return null
-        return zinnen[kern.joinToString(" ")]
+        zinnen[kern.joinToString(" ")]?.let { return it }
+        // Woorden die Vosk niet kent (een naam als "Hue") laat hij weg uit de zin: dan de kortste zin zoeken waar
+        // het gehoorde in past, met hetzelfde eerste en laatste woord
+        return zinnen.entries.asSequence()
+            .map { it to it.key.split(" ") }
+            .filter { (_, w) -> w.size > kern.size && w.first() == kern.first() && w.last() == kern.last() && bevat(w, kern) }
+            .minByOrNull { (_, w) -> w.size }?.first?.value
+    }
+
+    /** Staan de woorden van [deel] in deze volgorde in [heel] (met mogelijk woorden ertussen)? */
+    private fun bevat(heel: List<String>, deel: List<String>): Boolean {
+        var i = 0
+        for (w in heel) if (i < deel.size && w == deel[i]) i++
+        return i == deel.size
     }
 }
