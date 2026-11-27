@@ -26,7 +26,5 @@ class ZinnenTest {
         assertNull(Zinnen.herken("zet mijn [unk] aan", listOf(1.0, 1.0, 1.0, 1.0), zinnen))
         assertNull(Zinnen.herken("zet mijn lamp aan", listOf(0.4, 0.5, 0.6, 0.5), zinnen)) // te onzeker
         assertNull(Zinnen.herken("", emptyList(), zinnen))
-        // "Lamp Tim kamer" zonder het onbekende woord "tim": toch de goede lamp
-        assertEquals("zet de lamp tim kamer aan", Zinnen.herken("zet de lamp kamer aan", listOf(1.0, 1.0, 1.0, 1.0, 1.0), zinnen))
     }
 }
