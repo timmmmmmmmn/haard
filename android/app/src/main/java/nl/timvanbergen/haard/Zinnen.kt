@@ -37,7 +37,7 @@ object Zinnen {
             if (a.domein !in AAN_UIT) continue
             val namen = a.namen.map(::normaal).filter { it.isNotEmpty() && !it.any(Char::isDigit) }.distinct()
             for (n in namen) {
-                val varianten = if (Regex("^(de|het|mijn) ").containsMatchIn(n)) listOf(n) else listOf(n, "de $n", "het $n", "mijn $n")
+                val varianten = if (Regex("^(de|het|mijn) ").containsMatchIn(n)) listOf(n) else listOf(n, "de $n", "het $n")
                 for (x in varianten) {
                     for (w in listOf("aan", "uit")) {
                         zin("zet $x $w"); zin("doe $x $w"); zin("$x $w", "zet $x $w")
