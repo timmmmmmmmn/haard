@@ -39,6 +39,7 @@ class Assistent(private val ctx: Context) {
     private var beurt = 0 // elke nieuwe vraag krijgt een nummer; late berichten van een oude vraag tellen niet
     private val opname = ByteArrayOutputStream() // wat je zei, voor Gemini
     private var gestopt = false
+    private var twijfel = false // geen duidelijke spraak gemeten: niets verstaan = stil verdwijnen, zonder foutgeluid
     private val eerder = ArrayList<Pair<String, String>>() // dit gesprek met Gemini ("en morgen?")
     private var gesprekTijd = 0L
     private var speler: MediaPlayer? = null
@@ -51,6 +52,7 @@ class Assistent(private val ctx: Context) {
     // het stilste stukje (ook van vlak voor het wekwoord). Zonder duidelijke spraak doet Haard niets (spookcontrole).
     private var stilsteBlok = Float.MAX_VALUE
     private var spraakBlokken = 0
+    private var hardste = 0f // voor het logboek: hoe hard was het hardste stukje
     private var stilteBlokken = 0
 
     /** Wekwoord gehoord of op de microfoon getikt. */
@@ -91,7 +93,7 @@ class Assistent(private val ctx: Context) {
         doorpraten = false
         // Een gesprek loopt door als je binnen vijf minuten weer iets vraagt ("en morgen?")
         if (System.currentTimeMillis() - gesprekTijd > 5 * 60_000) eerder.clear()
-        stilsteBlok = achtergrond.takeIf { it >= 0 }?.coerceAtLeast(30f) ?: Float.MAX_VALUE; spraakBlokken = 0; stilteBlokken = 0
+        stilsteBlok = achtergrond.takeIf { it >= 0 }?.coerceAtLeast(30f) ?: Float.MAX_VALUE; spraakBlokken = 0; stilteBlokken = 0; hardste = 0f
         vraagFocus()
         Geluid.luister()
         status("luisteren")
@@ -115,8 +117,10 @@ class Assistent(private val ctx: Context) {
         for (i in 0 until n) { val s = ((pcm[2 * i + 1].toInt() shl 8) or (pcm[2 * i].toInt() and 0xff)).toShort().toDouble(); som += s * s }
         val rms = Math.sqrt(som / n).toFloat()
         stilsteBlok = minOf(stilsteBlok, rms)
-        if (rms > maxOf(stilsteBlok * 4f, 400f)) { spraakBlokken++; stilteBlokken = 0 }
-        else if (rms < maxOf(stilsteBlok * 2.5f, 250f)) stilteBlokken++
+        hardste = maxOf(hardste, rms)
+        // Vooral ten opzichte van de stilte in de kamer: de microfoon van de Fire is zacht (spraak op een paar meter ~150-600)
+        if (rms > maxOf(stilsteBlok * 3f, 120f)) { spraakBlokken++; stilteBlokken = 0 }
+        else if (rms < maxOf(stilsteBlok * 2f, 80f)) stilteBlokken++
         else stilteBlokken = 0
         // Minstens ~0,3 s gepraat, daarna 7 stille blokken van 80 ms
         if (spraakBlokken >= 4 && stilteBlokken >= 7) eindeGeluid()
@@ -133,11 +137,14 @@ class Assistent(private val ctx: Context) {
     }
 
     private fun naVerstaan(u: Verstaan.Uitkomst, spraak: Boolean) {
-        android.util.Log.i("Haard", "Verstaan: vrij=\"${u.vrij}\" commando=${u.commando} spraak=$spraak")
-        // Veiligheid: zonder duidelijke spraak nooit iets doen (geen "spook"-opdrachten bij ruis)
-        if (!spraak) return stilWeg()
+        android.util.Log.i("Haard", "Verstaan: vrij=\"${u.vrij}\" commando=${u.commando} spraak=$spraak " +
+            "(blokken=$spraakBlokken, hardste=${hardste.toInt()}, stilste=${stilsteBlok.toInt()}, kamer=${achtergrond.toInt()}, vosk=${Verstaan.klaar})")
+        // Een vast commando alleen bij duidelijke spraak (nooit een lamp door ruis)
         val commando = u.commando
-        if (commando != null && wachtOpApparaat == null) return snelUitvoeren(commando, u)
+        if (commando != null && spraak && wachtOpApparaat == null) return snelUitvoeren(commando, u)
+        // Twijfel of er wel iets gezegd is: 's nachts niets doen; overdag mag Gemini kijken, en hoort die niets, dan stil weg
+        if (!spraak && (Stilte.nu || Gemini.sleutel == null)) return stilWeg()
+        twijfel = !spraak
         langzaam(u)
     }
 
@@ -149,12 +156,14 @@ class Assistent(private val ctx: Context) {
         val pcm = opname.toByteArray()
         Thread {
             val r = runCatching { Gemini.uitschrijven(pcm, Verstaan.namen) }
+            android.util.Log.i("Haard", "Gemini hoorde: \"${r.getOrNull()}\" ${r.exceptionOrNull()?.message ?: ""}")
             h.post { if (mijn == beurt) naTekst(r.getOrNull() ?: u.vrij, r.exceptionOrNull()?.message) }
         }.start()
     }
 
     private fun naTekst(tekst: String, fout: String?) {
         when {
+            tekst.isEmpty() && twijfel -> stilWeg()
             tekst.isEmpty() && fout != null -> mislukt(fout)
             tekst.isEmpty() -> niksVerstaan()
             Opdrachten.isSpook(tekst, eenWoordMag = wachtOpApparaat != null) -> stilWeg()

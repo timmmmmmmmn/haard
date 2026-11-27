@@ -457,7 +457,7 @@
     $('stilTotWeekend').value = inst.stil_tot_weekend;
     $('nachtAan').checked = inst.nacht;
     $('versie').textContent = 'Versie ' + N.versie();
-    $('geminiSub').textContent = inst.gemini ? 'Sleutel ingesteld: vragen gaan naar Gemini (met Google Zoeken)' : 'Geen sleutel: alleen commando\'s';
+    $('geminiSub').textContent = inst.gemini ? 'Sleutel ingesteld: wat geen vast commando is, gaat naar Gemini' : 'Geen sleutel: alleen commando\'s';
     $('geminiKnop').textContent = inst.gemini ? 'Vervangen' : 'Opslaan';
     if (inst.ingelogd && haStatus.verbonden) laadKeuzes();
   }

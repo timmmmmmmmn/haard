@@ -46,7 +46,8 @@ object Verstaan {
             model = m
             vrij = Recognizer(m, 16000f).apply { setWords(true) }
             maakVast()
-        }
+            android.util.Log.i("Haard", "Vosk geladen")
+        }.onFailure { android.util.Log.e("Haard", "Vosk laden mislukt", it) }
         ververs()
     }
 
@@ -83,7 +84,7 @@ object Verstaan {
         zinnenTijd = System.currentTimeMillis()
         Thread {
             val z = runCatching { haalZinnen() }.getOrNull() ?: return@Thread
-            h.post { if (z.isNotEmpty() && z != zinnen) { zinnen = z; maakVast() } }
+            h.post { if (z.isNotEmpty() && z != zinnen) { zinnen = z; maakVast(); android.util.Log.i("Haard", "${z.size} vaste zinnen, vast=${vast != null}") } }
         }.start()
     }
 
