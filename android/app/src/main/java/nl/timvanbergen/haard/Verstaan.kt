@@ -93,6 +93,7 @@ object Verstaan {
         val c = vast?.finalResult?.let { r ->
             val o = JSONObject(r)
             val zeker = o.optJSONArray("result")?.let { a -> (0 until a.length()).map { a.getJSONObject(it).optDouble("conf", 0.0) } }.orEmpty()
+            android.util.Log.i("Haard", "Vosk vast: \"${o.optString("text")}\" ${zeker.map { (it * 100).toInt() }}")
             Zinnen.herken(o.optString("text"), zeker, zinnen)
         }
         dan(Uitkomst(v, c))
