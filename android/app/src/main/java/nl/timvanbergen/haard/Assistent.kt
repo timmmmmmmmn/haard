@@ -235,6 +235,7 @@ class Assistent(private val ctx: Context) {
             val resp = r.optJSONObject("result")?.optJSONObject("response") ?: return@post nietBegrepen()
             val soort = resp.optString("response_type")
             val zin = Opdrachten.vertaalStaat(resp.optJSONObject("speech")?.optJSONObject("plain")?.optString("speech").orEmpty())
+            android.util.Log.i("Haard", "Home Assistant: $soort \"$zin\"")
             when {
                 // Gedaan (lamp, timer): meteen een belletje, geen voorgelezen "Aangezet"
                 soort == "action_done" && Opdrachten.isBevestiging(resp, zin) -> {
@@ -392,6 +393,7 @@ class Assistent(private val ctx: Context) {
         beurt++ // late berichten van deze vraag tellen niet meer
         laatFocusLos()
         if (was != Fase.RUST || antwoordTekst != null) status("klaar", jij = jij, antwoord = antwoordTekst)
+        if (antwoordTekst != null) android.util.Log.i("Haard", "Klaar: \"${jij.orEmpty()}\" → \"$antwoordTekst\"")
     }
 
     private fun stopSpeler() {
